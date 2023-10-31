@@ -3,6 +3,7 @@ const { config } = require('dotenv');
 const { set, connect, connection } = require('mongoose');
 const express = require('express');
 const cors = require('cors');
+const userRoutes = require('./src/routes/UserRoutes');
 config();
 
 const app = express();
@@ -22,6 +23,8 @@ connection.on('connected', () => {
 connection.on('error', (err) => {
 	console.log('Error connecting to db.', err);
 });
+
+app.use(userRoutes);
 
 const port = process.env.PORT || 3005;
 
