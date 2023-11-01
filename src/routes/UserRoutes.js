@@ -51,7 +51,7 @@ router.post('/users/register', async (req, res) => {
 			updatedAt: newUser?.updatedAt,
 		};
 
-		res.json({ userData, token });
+		res.status(201).json({ userData, token });
 	} catch (err) {
 		console.log(err);
 		errors.message = 'Error registering user!';
@@ -61,11 +61,11 @@ router.post('/users/register', async (req, res) => {
 
 // Login
 router.post('/users/login', async (req, res) => {
+	const { login, password } = req?.body;
+
 	const { valid, errors } = validateLogin(req?.body);
 
 	if (!valid) return res.status(400).json(errors);
-
-	const { login, password } = req?.body;
 
 	const user = await User.findOne({
 		$or: [{ username: login }, { email: login }],

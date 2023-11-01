@@ -1,9 +1,11 @@
 require('./src/models/User');
+require('./src/models/Post');
 const { config } = require('dotenv');
 const { set, connect, connection } = require('mongoose');
 const express = require('express');
 const cors = require('cors');
 const userRoutes = require('./src/routes/UserRoutes');
+const postRoutes = require('./src/routes/PostRoutes');
 config();
 
 const app = express();
@@ -25,6 +27,7 @@ connection.on('error', (err) => {
 });
 
 app.use(userRoutes);
+app.use(postRoutes);
 
 const port = process.env.PORT || 3005;
 

@@ -35,6 +35,15 @@ const userSchema = new Schema(
 			default:
 				'https://res.cloudinary.com/dcxmdnu2h/image/upload/v1639711780/uvwhfglx0nhcfkvalyh7.jpg',
 		},
+		passwordChangeAt: {
+			type: Date,
+		},
+		passwordResetToken: {
+			type: String,
+		},
+		passwordResetTokenExpires: {
+			type: Date,
+		},
 	},
 	{
 		toJSON: {
