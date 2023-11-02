@@ -13,6 +13,12 @@ const postSchema = new Schema(
 		pinned: {
 			type: Boolean,
 		},
+		likes: [
+			{
+				type: Schema.Types.ObjectId,
+				ref: 'User',
+			},
+		],
 	},
 	{
 		toJSON: {

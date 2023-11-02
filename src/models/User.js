@@ -56,6 +56,14 @@ const userSchema = new Schema(
 	}
 );
 
+userSchema.virtual('likes', {
+	ref: 'Post',
+	localField: '_id',
+	foreignField: 'likes',
+	// justOne: false,
+	// options: { match: { likes: '$$localField' } },
+});
+
 userSchema.pre('save', function (next) {
 	const user = this;
 	if (!user.isModified('password')) {

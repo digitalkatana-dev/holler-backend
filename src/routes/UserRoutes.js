@@ -19,10 +19,12 @@ router.post('/users/register', async (req, res) => {
 
 	const user = await User.findOne({
 		$or: [{ username: req?.body?.username }, { email: req?.body?.email }],
-	}).catch((err) => {
-		errors.message = 'Something went wrong!';
-		return res.status(400).json(errors);
-	});
+	})
+		.populate('likes')
+		.catch((err) => {
+			errors.message = 'Something went wrong!';
+			return res.status(400).json(errors);
+		});
 
 	if (user) {
 		if (req?.body?.email == user.email) {
@@ -47,6 +49,7 @@ router.post('/users/register', async (req, res) => {
 			username: newUser?.username,
 			email: newUser?.email,
 			profilePic: newUser?.profilePic,
+			likes: newUser?.likes,
 			createdAt: newUser?.createdAt,
 			updatedAt: newUser?.updatedAt,
 		};
@@ -69,7 +72,7 @@ router.post('/users/login', async (req, res) => {
 
 	const user = await User.findOne({
 		$or: [{ username: login }, { email: login }],
-	});
+	}).populate('likes');
 	if (!user) {
 		errors.message = 'Error, user not found!';
 		return res.status(404).json(errors);
@@ -88,6 +91,7 @@ router.post('/users/login', async (req, res) => {
 			username: user?.username,
 			email: user?.email,
 			profilePic: user?.profilePic,
+			likes: user?.likes,
 			createdAt: user?.createdAt,
 			updatedAt: user?.updatedAt,
 		};
@@ -96,6 +100,54 @@ router.post('/users/login', async (req, res) => {
 	} catch (err) {
 		console.log(err);
 		errors.message = 'Something went wrong, try again!';
+		return res.status(400).json(errors);
+	}
+});
+
+// Get User
+router.get('/users', requireAuth, async (req, res) => {
+	let errors = {};
+	const hasId = req?.query?.id;
+
+	try {
+		let users;
+		let userData;
+
+		if (hasId) {
+			users = await User.findById(hasId).populate('likes');
+			userData = {
+				_id: users?._id,
+				firstName: users?.firstName,
+				lastName: users?.lastName,
+				username: users?.username,
+				email: users?.email,
+				profilePic: users?.profilePic,
+				likes: users?.likes,
+				createdAt: users?.createdAt,
+				updatedAt: users?.updatedAt,
+			};
+		} else {
+			userData = [];
+			users = await User.find({}).populate('likes');
+			users.forEach((user) => {
+				userData.push({
+					_id: user?._id,
+					firstName: user?.firstName,
+					lastName: user?.lastName,
+					username: user?.username,
+					email: user?.email,
+					profilePic: user?.profilePic,
+					likes: user?.likes,
+					createdAt: user?.createdAt,
+					updatedAt: user?.updatedAt,
+				});
+			});
+		}
+
+		res.json(userData);
+	} catch (err) {
+		console.log(err);
+		errors.message = 'Error getting users!';
 		return res.status(400).json(errors);
 	}
 });
