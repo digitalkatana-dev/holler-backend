@@ -35,6 +35,15 @@ const userSchema = new Schema(
 			default:
 				'https://res.cloudinary.com/dcxmdnu2h/image/upload/v1639711780/uvwhfglx0nhcfkvalyh7.jpg',
 		},
+		passwordChangeAt: {
+			type: Date,
+		},
+		passwordResetToken: {
+			type: String,
+		},
+		passwordResetTokenExpires: {
+			type: Date,
+		},
 	},
 	{
 		toJSON: {
@@ -46,6 +55,21 @@ const userSchema = new Schema(
 		timestamps: true,
 	}
 );
+
+userSchema.virtual('likes', {
+	ref: 'Post',
+	localField: '_id',
+	foreignField: 'likes',
+	justOne: false,
+	// options: { match: { likes: '$$localField' } },
+});
+
+userSchema.virtual('reposts', {
+	ref: 'Post',
+	localField: '_id',
+	foreignField: 'reposts',
+	justOne: false,
+});
 
 userSchema.pre('save', function (next) {
 	const user = this;

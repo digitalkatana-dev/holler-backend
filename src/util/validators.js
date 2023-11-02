@@ -13,15 +13,32 @@ const isEmpty = (string) => {
 exports.validateRegistration = (data) => {
 	let errors = {};
 
-	if (isEmail(data?.firstName)) errors.firstName = 'Must not be empty!';
-	if (isEmail(data?.lastName)) errors.lastName = 'Must not be empty!';
-	if (isEmail(data?.username)) errors.username = 'Must not be empty!';
+	if (isEmpty(data?.firstName)) errors.firstName = 'Must not be empty!';
+	if (isEmpty(data?.lastName)) errors.lastName = 'Must not be empty!';
+	if (isEmpty(data?.username)) errors.username = 'Must not be empty!';
 	if (isEmpty(data?.email)) {
 		errors.email = 'Must not be empty!';
 	} else if (!isEmail(data?.email)) {
 		errors.email = 'Must be a valid email address!';
 	}
-	if (isEmail(data?.password)) errors.password = 'Must not be empty!';
+	if (isEmpty(data?.password)) errors.password = 'Must not be empty!';
+	if (isEmpty(data?.confirmPassword)) {
+		errors.confirm = 'Must not be empty!';
+	} else if (data?.confirmPassword !== data?.password) {
+		errors.confirm = 'Passwords do not match!';
+	}
+
+	return {
+		errors,
+		valid: Object.keys(errors).length === 0 ? true : false,
+	};
+};
+
+exports.validateLogin = (data) => {
+	let errors = {};
+
+	if (isEmpty(data?.login)) errors.login = 'Must not be empty!';
+	if (isEmpty(data?.password)) errors.password = 'Must not be empty!';
 
 	return {
 		errors,
