@@ -60,8 +60,15 @@ userSchema.virtual('likes', {
 	ref: 'Post',
 	localField: '_id',
 	foreignField: 'likes',
-	// justOne: false,
+	justOne: false,
 	// options: { match: { likes: '$$localField' } },
+});
+
+userSchema.virtual('reposts', {
+	ref: 'Post',
+	localField: '_id',
+	foreignField: 'reposts',
+	justOne: false,
 });
 
 userSchema.pre('save', function (next) {

@@ -50,6 +50,7 @@ router.post('/users/register', async (req, res) => {
 			email: newUser?.email,
 			profilePic: newUser?.profilePic,
 			likes: newUser?.likes,
+			reposts: newUser?.reposts,
 			createdAt: newUser?.createdAt,
 			updatedAt: newUser?.updatedAt,
 		};
@@ -92,6 +93,7 @@ router.post('/users/login', async (req, res) => {
 			email: user?.email,
 			profilePic: user?.profilePic,
 			likes: user?.likes,
+			reposts: user?.reposts,
 			createdAt: user?.createdAt,
 			updatedAt: user?.updatedAt,
 		};
@@ -114,7 +116,7 @@ router.get('/users', requireAuth, async (req, res) => {
 		let userData;
 
 		if (hasId) {
-			users = await User.findById(hasId).populate('likes');
+			users = await User.findById(hasId).populate('likes').populate('reposts');
 			userData = {
 				_id: users?._id,
 				firstName: users?.firstName,
@@ -123,12 +125,13 @@ router.get('/users', requireAuth, async (req, res) => {
 				email: users?.email,
 				profilePic: users?.profilePic,
 				likes: users?.likes,
+				reposts: users?.reposts,
 				createdAt: users?.createdAt,
 				updatedAt: users?.updatedAt,
 			};
 		} else {
 			userData = [];
-			users = await User.find({}).populate('likes');
+			users = await User.find({}).populate('likes').populate('reposts');
 			users.forEach((user) => {
 				userData.push({
 					_id: user?._id,
@@ -138,6 +141,7 @@ router.get('/users', requireAuth, async (req, res) => {
 					email: user?.email,
 					profilePic: user?.profilePic,
 					likes: user?.likes,
+					reposts: user?.reposts,
 					createdAt: user?.createdAt,
 					updatedAt: user?.updatedAt,
 				});

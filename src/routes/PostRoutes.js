@@ -3,6 +3,7 @@ const { model } = require('mongoose');
 const requireAuth = require('../middleware/requireAuth');
 
 const Post = model('Post');
+const User = model('User');
 const router = Router();
 
 // Create Post
@@ -33,7 +34,10 @@ router.get('/posts', requireAuth, async (req, res) => {
 	let errors = {};
 
 	try {
-		const posts = await Post.find({}).populate('postedBy').sort('-createdAt');
+		let posts = await Post.find({})
+			.populate('postedBy')
+			.populate('repostData')
+			.sort('-createdAt');
 		posts.forEach((post) => {
 			const { postedBy } = post;
 			post.postedBy = {
@@ -45,6 +49,7 @@ router.get('/posts', requireAuth, async (req, res) => {
 				profilePic: postedBy.profilePic,
 			};
 		});
+		posts = await User.populate(posts, { path: 'repostData.postedBy' });
 
 		res.json(posts);
 	} catch (err) {
@@ -83,6 +88,35 @@ router.put('/posts/:id/like', requireAuth, async (req, res) => {
 	} catch (err) {
 		console.log(err);
 		errors.message = 'Error likeing post!';
+		return res.status(400).json(errors);
+	}
+});
+
+// Repost
+router.post('/posts/:id/repost', requireAuth, async (req, res) => {
+	let errors = {};
+	const { id } = req?.params;
+
+	const deletedPost = await Post.findOneAndDelete({
+		postedBy: req?.user?._id,
+		repostData: id,
+	});
+	let repost = deletedPost;
+	if (!repost)
+		repost = await Post.create({ postedBy: req?.user?._id, repostData: id });
+	const option = deletedPost ? '$pull' : '$push';
+
+	try {
+		const updated = await Post.findByIdAndUpdate(
+			id,
+			{ [option]: { reposts: req?.user?._id } },
+			{ new: true }
+		);
+
+		res.json({ updated, success: { message: 'Reposted successfully!' } });
+	} catch (err) {
+		console.log(err);
+		errors.message = 'Error reposting!';
 		return res.status(400).json(errors);
 	}
 });

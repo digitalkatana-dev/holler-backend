@@ -19,6 +19,16 @@ const postSchema = new Schema(
 				ref: 'User',
 			},
 		],
+		reposts: [
+			{
+				type: Schema.Types.ObjectId,
+				ref: 'User',
+			},
+		],
+		repostData: {
+			type: Schema.Types.ObjectId,
+			ref: 'Post',
+		},
 	},
 	{
 		toJSON: {
