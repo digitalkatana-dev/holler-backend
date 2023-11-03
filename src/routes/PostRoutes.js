@@ -92,7 +92,7 @@ router.put('/posts/:id/like', requireAuth, async (req, res) => {
 	}
 });
 
-// Repost
+// Repost/Remove Repost
 router.post('/posts/:id/repost', requireAuth, async (req, res) => {
 	let errors = {};
 	const { id } = req?.params;
