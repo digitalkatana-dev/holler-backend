@@ -32,23 +32,35 @@ router.post('/posts', requireAuth, async (req, res) => {
 // Get Posts
 router.get('/posts', requireAuth, async (req, res) => {
 	let errors = {};
+	const hasId = req?.query?.id;
+	let posts;
 
 	try {
-		let posts = await Post.find({})
-			.populate('postedBy')
-			.populate('repostData')
-			.sort('-createdAt');
-		posts.forEach((post) => {
-			const { postedBy } = post;
-			post.postedBy = {
-				_id: postedBy._id,
-				firstName: postedBy.firstName,
-				lastName: postedBy.lastName,
-				username: postedBy.username,
-				email: postedBy.email,
-				profilePic: postedBy.profilePic,
-			};
-		});
+		if (hasId) {
+			posts = await Post.findById(hasId)
+				.populate('postedBy')
+				.populate('repostData')
+				.populate('replyTo')
+				.sort('-createdAt');
+		} else {
+			posts = await Post.find({})
+				.populate('postedBy')
+				.populate('repostData')
+				.populate('replyTo')
+				.sort('-createdAt');
+			posts.forEach((post) => {
+				const { postedBy } = post;
+				post.postedBy = {
+					_id: postedBy._id,
+					firstName: postedBy.firstName,
+					lastName: postedBy.lastName,
+					username: postedBy.username,
+					email: postedBy.email,
+					profilePic: postedBy.profilePic,
+				};
+			});
+		}
+		posts = await User.populate(posts, { path: 'replyTo.postedBy' });
 		posts = await User.populate(posts, { path: 'repostData.postedBy' });
 
 		res.json(posts);
