@@ -62,6 +62,9 @@ router.get('/posts', requireAuth, async (req, res) => {
 		}
 		posts = await User.populate(posts, { path: 'replyTo.postedBy' });
 		posts = await User.populate(posts, { path: 'repostData.postedBy' });
+		posts = await Post.populate(posts, { path: 'replyTo.replyTo' });
+		posts = await User.populate(posts, { path: 'replyTo.replyTo.postedBy' });
+		posts = await Post.populate(posts, { path: 'replyTo.replyTo.replyTo' });
 
 		res.json(posts);
 	} catch (err) {
@@ -87,11 +90,21 @@ router.put('/posts/:id/like', requireAuth, async (req, res) => {
 	const option = isLiked ? '$pull' : '$push';
 
 	try {
-		const updated = await Post.findByIdAndUpdate(
+		let updated = await Post.findByIdAndUpdate(
 			id,
 			{ [option]: { likes: req?.user?._id } },
 			{ new: true }
-		);
+		)
+			.populate('postedBy')
+			.populate('repostData')
+			.populate('replyTo');
+		updated = await User.populate(updated, { path: 'replyTo.postedBy' });
+		updated = await User.populate(updated, { path: 'repostData.postedBy' });
+		updated = await Post.populate(updated, { path: 'replyTo.replyTo' });
+		updated = await User.populate(updated, {
+			path: 'replyTo.replyTo.postedBy',
+		});
+		updated = await Post.populate(updated, { path: 'replyTo.replyTo.replyTo' });
 
 		res.json({
 			updated,
@@ -119,11 +132,21 @@ router.post('/posts/:id/repost', requireAuth, async (req, res) => {
 	const option = deletedPost ? '$pull' : '$push';
 
 	try {
-		const updated = await Post.findByIdAndUpdate(
+		let updated = await Post.findByIdAndUpdate(
 			id,
 			{ [option]: { reposts: req?.user?._id } },
 			{ new: true }
-		);
+		)
+			.populate('postedBy')
+			.populate('repostData')
+			.populate('replyTo');
+		updated = await User.populate(updated, { path: 'replyTo.postedBy' });
+		updated = await User.populate(updated, { path: 'repostData.postedBy' });
+		updated = await Post.populate(updated, { path: 'replyTo.replyTo' });
+		updated = await User.populate(updated, {
+			path: 'replyTo.replyTo.postedBy',
+		});
+		updated = await Post.populate(updated, { path: 'replyTo.replyTo.replyTo' });
 
 		res.json({ updated, success: { message: 'Reposted successfully!' } });
 	} catch (err) {
