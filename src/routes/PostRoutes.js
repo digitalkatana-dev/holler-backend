@@ -53,16 +53,18 @@ router.get('/posts', requireAuth, async (req, res) => {
 		if (hasId) {
 			const results = await getPosts({ _id: hasId });
 			posts = results[0];
-			// posts.replies = await getPosts({ replyTo: hasId });
+			posts.replies = await getPosts({ replyTo: hasId });
 		} else {
 			posts = await getPosts();
+			posts = await User.populate(posts, { path: 'repostData.postedBy' });
+			posts = await User.populate(posts, { path: 'repostData.replies' });
+			posts = await User.populate(posts, { path: 'repostData.reposts' });
+			posts = await Post.populate(posts, { path: 'replies' });
+			posts = await User.populate(posts, { path: 'replies.postedBy' });
 		}
-		posts = await User.populate(posts, { path: 'replies.postedBy' });
-		posts = await Post.populate(posts, { path: 'replies.replyTo' });
-		posts = await Post.populate(posts, { path: 'replies.replyTo.postedBy' });
-		// posts = await User.populate(posts, { path: 'replyTo.postedBy' });
-		// posts = await User.populate(posts, { path: 'repostData.postedBy' });
-		// posts = await Post.populate(posts, { path: 'replyTo.replyTo' });
+		// posts = await Post.populate(posts, { path: 'replyTo.replies' });
+		// posts = await Post.populate(posts, { path: 'replyTo.replies.postedBy' });
+
 		res.json(posts);
 	} catch (err) {
 		console.log(err);
@@ -156,11 +158,12 @@ router.post('/posts/:id/repost', requireAuth, async (req, res) => {
 async function getPosts(filter) {
 	let results = await Post.find(filter)
 		.populate('postedBy')
+		.populate('reposts')
 		.populate('repostData')
 		.populate('replyTo')
 		.sort('-createdAt');
 	results.forEach(async (result) => {
-		let { postedBy, replies } = result;
+		let { postedBy } = result;
 		result.postedBy = {
 			_id: postedBy._id,
 			firstName: postedBy.firstName,
@@ -170,9 +173,8 @@ async function getPosts(filter) {
 			profilePic: postedBy.profilePic,
 		};
 	});
-	results = await Post.populate(results, { path: 'replies' });
 	results = await User.populate(results, { path: 'replyTo.postedBy' });
-	return await User.populate(results, { path: 'repostData.postedBy' });
+	return results;
 }
 
 module.exports = router;
