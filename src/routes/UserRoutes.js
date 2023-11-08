@@ -78,7 +78,6 @@ router.post('/users/login', async (req, res) => {
 	const user = await User.findOne({
 		$or: [{ username: login }, { email: login }],
 	})
-		.populate('posts')
 		.populate('likes')
 		.populate('reposts');
 	if (!user) {
@@ -87,6 +86,7 @@ router.post('/users/login', async (req, res) => {
 	}
 
 	try {
+		user.posts = await getPosts({ postedBy: user._id });
 		await user?.comparePassword(password);
 		const token = sign({ userId: user?._id }, process.env.DB_SECRET_KEY, {
 			expiresIn: '10d',
@@ -125,10 +125,8 @@ router.get('/users', requireAuth, async (req, res) => {
 		let userData;
 
 		if (hasId) {
-			users = await User.findById(hasId)
-				.populate('posts')
-				.populate('likes')
-				.populate('reposts');
+			users = await User.findById(hasId).populate('likes').populate('reposts');
+			users.posts = await getPosts({ postedBy: users._id });
 			userData = {
 				_id: users?._id,
 				firstName: users?.firstName,
@@ -144,9 +142,9 @@ router.get('/users', requireAuth, async (req, res) => {
 			};
 		} else if (hasUsername) {
 			users = await User.findOne({ username: hasUsername })
-				.populate('posts')
 				.populate('likes')
 				.populate('reposts');
+			users.posts = await getPosts({ postedBy: users._id });
 			userData = {
 				_id: users?._id,
 				firstName: users?.firstName,
@@ -191,26 +189,26 @@ router.get('/users', requireAuth, async (req, res) => {
 	}
 });
 
-// async function getPosts(filter) {
-// 	let results = await Post.find(filter)
-// 		.populate('postedBy')
-// 		.populate('reposts')
-// 		.populate('repostData')
-// 		.populate('replyTo')
-// 		.sort('-createdAt');
-// 	results.forEach(async (result) => {
-// 		let { postedBy } = result;
-// 		result.postedBy = {
-// 			_id: postedBy._id,
-// 			firstName: postedBy.firstName,
-// 			lastName: postedBy.lastName,
-// 			username: postedBy.username,
-// 			email: postedBy.email,
-// 			profilePic: postedBy.profilePic,
-// 		};
-// 	});
-// 	results = await User.populate(results, { path: 'replyTo.postedBy' });
-// 	return results;
-// }
+async function getPosts(filter) {
+	let results = await Post.find(filter)
+		.populate('postedBy')
+		.populate('reposts')
+		.populate('repostData')
+		.populate('replyTo')
+		.sort('-createdAt');
+	results.forEach(async (result) => {
+		let { postedBy } = result;
+		result.postedBy = {
+			_id: postedBy._id,
+			firstName: postedBy.firstName,
+			lastName: postedBy.lastName,
+			username: postedBy.username,
+			email: postedBy.email,
+			profilePic: postedBy.profilePic,
+		};
+	});
+	results = await User.populate(results, { path: 'replyTo.postedBy' });
+	return results;
+}
 
 module.exports = router;
