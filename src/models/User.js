@@ -56,6 +56,12 @@ const userSchema = new Schema(
 	}
 );
 
+userSchema.virtual('posts', {
+	ref: 'Post',
+	localField: '_id',
+	foreignField: 'postedBy',
+});
+
 userSchema.virtual('likes', {
 	ref: 'Post',
 	localField: '_id',

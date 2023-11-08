@@ -89,7 +89,7 @@ router.put('/posts/:id/like', requireAuth, async (req, res) => {
 	const option = isLiked ? '$pull' : '$push';
 
 	try {
-		let updated = await Post.findByIdAndUpdate(
+		await Post.findByIdAndUpdate(
 			id,
 			{ [option]: { likes: req?.user?._id } },
 			{ new: true }
@@ -105,10 +105,7 @@ router.put('/posts/:id/like', requireAuth, async (req, res) => {
 		// });
 		// updated = await Post.populate(updated, { path: 'replyTo.replyTo.replyTo' });
 
-		res.json({
-			updated,
-			success: { message: 'Post liked/disliked successfully!' },
-		});
+		res.json({ success: { message: 'Post liked/disliked successfully!' } });
 	} catch (err) {
 		console.log(err);
 		errors.message = 'Error likeing post!';
@@ -131,7 +128,7 @@ router.post('/posts/:id/repost', requireAuth, async (req, res) => {
 	const option = deletedPost ? '$pull' : '$push';
 
 	try {
-		let updated = await Post.findByIdAndUpdate(
+		await Post.findByIdAndUpdate(
 			id,
 			{ [option]: { reposts: req?.user?._id } },
 			{ new: true }
@@ -147,10 +144,34 @@ router.post('/posts/:id/repost', requireAuth, async (req, res) => {
 		// });
 		// updated = await Post.populate(updated, { path: 'replyTo.replyTo.replyTo' });
 
-		res.json({ updated, success: { message: 'Reposted successfully!' } });
+		res.json({ success: { message: 'Reposted successfully!' } });
 	} catch (err) {
 		console.log(err);
 		errors.message = 'Error reposting!';
+		return res.status(400).json(errors);
+	}
+});
+
+// Delete Post
+router.delete('/posts/:id/delete', requireAuth, async (req, res) => {
+	let errors = {};
+	const { id } = req?.params;
+
+	try {
+		const deletedPost = await Post.findByIdAndDelete(id);
+
+		if (!deletedPost) {
+			errors.message = 'Error, post not found!';
+			return res.status(404).json(errors);
+		}
+
+		res.json({
+			deletedPost,
+			success: { message: 'Post deleted successfully!' },
+		});
+	} catch (err) {
+		console.log(err);
+		errors.message = 'Error deleting post!';
 		return res.status(400).json(errors);
 	}
 });
