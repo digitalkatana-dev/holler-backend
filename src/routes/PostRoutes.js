@@ -157,9 +157,9 @@ async function getPosts(filter) {
 			_id: postedBy._id,
 			firstName: postedBy.firstName,
 			lastName: postedBy.lastName,
+			dob: postedBy.dob,
 			username: postedBy.username,
 			email: postedBy.email,
-			dob: postedBy.dob,
 			profilePic: postedBy.profilePic,
 		};
 	});

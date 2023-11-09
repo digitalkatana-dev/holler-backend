@@ -14,6 +14,10 @@ const userSchema = new Schema(
 			required: true,
 			trim: true,
 		},
+		dob: {
+			type: String,
+			required: true,
+		},
 		username: {
 			type: String,
 			required: true,
@@ -25,10 +29,6 @@ const userSchema = new Schema(
 			required: true,
 			trim: true,
 			unique: true,
-		},
-		dob: {
-			type: String,
-			// required: true,
 		},
 		password: {
 			type: String,
