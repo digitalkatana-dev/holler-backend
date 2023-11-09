@@ -10,7 +10,6 @@ const router = Router();
 router.post('/posts', requireAuth, async (req, res) => {
 	let errors = {};
 	const { _id } = req?.user;
-	const { replyTo } = req?.body;
 
 	try {
 		const postData = {
@@ -20,18 +19,6 @@ router.post('/posts', requireAuth, async (req, res) => {
 
 		const newPost = new Post(postData);
 		await newPost?.save();
-
-		if (replyTo) {
-			await Post.findByIdAndUpdate(
-				replyTo,
-				{
-					$push: { replies: newPost._id },
-				},
-				{
-					new: true,
-				}
-			);
-		}
 
 		res
 			.status(201)
@@ -51,19 +38,21 @@ router.get('/posts', requireAuth, async (req, res) => {
 
 	try {
 		if (hasId) {
-			const results = await getPosts({ _id: hasId });
-			posts = results[0];
+			let results = await getPosts({ _id: hasId });
+			results = results[0];
+
+			posts = {
+				results: results,
+			};
+
+			if (results.replyTo !== undefined) {
+				posts.replyTo = results.replyTo;
+			}
+
 			posts.replies = await getPosts({ replyTo: hasId });
 		} else {
-			posts = await getPosts();
-			posts = await User.populate(posts, { path: 'repostData.postedBy' });
-			posts = await User.populate(posts, { path: 'repostData.replies' });
-			posts = await User.populate(posts, { path: 'repostData.reposts' });
-			posts = await Post.populate(posts, { path: 'replies' });
-			posts = await User.populate(posts, { path: 'replies.postedBy' });
+			posts = await getPosts({});
 		}
-		// posts = await Post.populate(posts, { path: 'replyTo.replies' });
-		// posts = await Post.populate(posts, { path: 'replyTo.replies.postedBy' });
 
 		res.json(posts);
 	} catch (err) {
@@ -94,16 +83,6 @@ router.put('/posts/:id/like', requireAuth, async (req, res) => {
 			{ [option]: { likes: req?.user?._id } },
 			{ new: true }
 		);
-		// .populate('postedBy')
-		// .populate('repostData')
-		// .populate('replyTo');
-		// updated = await User.populate(updated, { path: 'replyTo.postedBy' });
-		// updated = await User.populate(updated, { path: 'repostData.postedBy' });
-		// updated = await Post.populate(updated, { path: 'replyTo.replyTo' });
-		// updated = await User.populate(updated, {
-		// 	path: 'replyTo.replyTo.postedBy',
-		// });
-		// updated = await Post.populate(updated, { path: 'replyTo.replyTo.replyTo' });
 
 		res.json({ success: { message: 'Post liked/disliked successfully!' } });
 	} catch (err) {
@@ -133,16 +112,6 @@ router.post('/posts/:id/repost', requireAuth, async (req, res) => {
 			{ [option]: { reposts: req?.user?._id } },
 			{ new: true }
 		);
-		// 	.populate('postedBy')
-		// 	.populate('repostData')
-		// 	.populate('replyTo');
-		// updated = await User.populate(updated, { path: 'replyTo.postedBy' });
-		// updated = await User.populate(updated, { path: 'repostData.postedBy' });
-		// updated = await Post.populate(updated, { path: 'replyTo.replyTo' });
-		// updated = await User.populate(updated, {
-		// 	path: 'replyTo.replyTo.postedBy',
-		// });
-		// updated = await Post.populate(updated, { path: 'replyTo.replyTo.replyTo' });
 
 		res.json({ success: { message: 'Reposted successfully!' } });
 	} catch (err) {
@@ -179,7 +148,6 @@ router.delete('/posts/:id/delete', requireAuth, async (req, res) => {
 async function getPosts(filter) {
 	let results = await Post.find(filter)
 		.populate('postedBy')
-		.populate('reposts')
 		.populate('repostData')
 		.populate('replyTo')
 		.sort('-createdAt');
@@ -191,11 +159,12 @@ async function getPosts(filter) {
 			lastName: postedBy.lastName,
 			username: postedBy.username,
 			email: postedBy.email,
+			dob: postedBy.dob,
 			profilePic: postedBy.profilePic,
 		};
 	});
 	results = await User.populate(results, { path: 'replyTo.postedBy' });
-	return results;
+	return await User.populate(results, { path: 'repostData.postedBy' });
 }
 
 module.exports = router;

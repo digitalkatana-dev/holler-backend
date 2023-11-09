@@ -13,19 +13,13 @@ const postSchema = new Schema(
 		pinned: {
 			type: Boolean,
 		},
-		replies: [
-			{
-				type: Schema.Types.ObjectId,
-				ref: 'Post',
-			},
-		],
 		likes: [
 			{
 				type: Schema.Types.ObjectId,
 				ref: 'User',
 			},
 		],
-		reposts: [
+		repostUsers: [
 			{
 				type: Schema.Types.ObjectId,
 				ref: 'User',

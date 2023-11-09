@@ -26,6 +26,10 @@ const userSchema = new Schema(
 			trim: true,
 			unique: true,
 		},
+		dob: {
+			type: String,
+			// required: true,
+		},
 		password: {
 			type: String,
 			required: true,
