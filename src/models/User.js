@@ -74,10 +74,10 @@ userSchema.virtual('likes', {
 	// options: { match: { likes: '$$localField' } },
 });
 
-userSchema.virtual('reposts', {
+userSchema.virtual('repostUsers', {
 	ref: 'Post',
 	localField: '_id',
-	foreignField: 'reposts',
+	foreignField: 'repostUsers',
 	justOne: false,
 });
 

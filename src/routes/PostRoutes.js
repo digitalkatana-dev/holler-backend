@@ -109,7 +109,7 @@ router.post('/posts/:id/repost', requireAuth, async (req, res) => {
 	try {
 		await Post.findByIdAndUpdate(
 			id,
-			{ [option]: { reposts: req?.user?._id } },
+			{ [option]: { repostUsers: req?.user?._id } },
 			{ new: true }
 		);
 

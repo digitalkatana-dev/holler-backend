@@ -23,7 +23,7 @@ router.post('/users/register', async (req, res) => {
 	})
 		.populate('posts')
 		.populate('likes')
-		.populate('reposts')
+		.populate('repostUsers')
 		.catch((err) => {
 			errors.message = 'Something went wrong!';
 			return res.status(400).json(errors);
@@ -51,10 +51,11 @@ router.post('/users/register', async (req, res) => {
 			lastName: newUser?.lastName,
 			username: newUser?.username,
 			email: newUser?.email,
+			dob: newUser?.dob,
 			profilePic: newUser?.profilePic,
 			posts: newUser?.posts,
 			likes: newUser?.likes,
-			reposts: newUser?.reposts,
+			repostUsers: newUser?.repostUsers,
 			createdAt: newUser?.createdAt,
 			updatedAt: newUser?.updatedAt,
 		};
@@ -79,7 +80,7 @@ router.post('/users/login', async (req, res) => {
 		$or: [{ username: login }, { email: login }],
 	})
 		.populate('likes')
-		.populate('reposts');
+		.populate('repostUsers');
 	if (!user) {
 		errors.message = 'Error, user not found!';
 		return res.status(404).json(errors);
@@ -98,10 +99,11 @@ router.post('/users/login', async (req, res) => {
 			lastName: user?.lastName,
 			username: user?.username,
 			email: user?.email,
+			dob: user?.dob,
 			profilePic: user?.profilePic,
 			likes: user?.likes,
 			posts: user?.posts,
-			reposts: user?.reposts,
+			repostUsers: user?.repostUsers,
 			createdAt: user?.createdAt,
 			updatedAt: user?.updatedAt,
 		};
@@ -125,7 +127,9 @@ router.get('/users', requireAuth, async (req, res) => {
 		let userData;
 
 		if (hasId) {
-			users = await User.findById(hasId).populate('likes').populate('reposts');
+			users = await User.findById(hasId)
+				.populate('likes')
+				.populate('repostUsers');
 			users.posts = await getPosts({ postedBy: users._id });
 			userData = {
 				_id: users?._id,
@@ -133,17 +137,18 @@ router.get('/users', requireAuth, async (req, res) => {
 				lastName: users?.lastName,
 				username: users?.username,
 				email: users?.email,
+				dob: users?.dob,
 				profilePic: users?.profilePic,
 				posts: users?.posts,
 				likes: users?.likes,
-				reposts: users?.reposts,
+				repostUsers: users?.repostUsers,
 				createdAt: users?.createdAt,
 				updatedAt: users?.updatedAt,
 			};
 		} else if (hasUsername) {
 			users = await User.findOne({ username: hasUsername })
 				.populate('likes')
-				.populate('reposts');
+				.populate('repostUsers');
 			users.posts = await getPosts({ postedBy: users._id });
 			userData = {
 				_id: users?._id,
@@ -151,10 +156,11 @@ router.get('/users', requireAuth, async (req, res) => {
 				lastName: users?.lastName,
 				username: users?.username,
 				email: users?.email,
+				dob: users?.dob,
 				profilePic: users?.profilePic,
 				posts: users?.posts,
 				likes: users?.likes,
-				reposts: users?.reposts,
+				repostUsers: users?.repostUsers,
 				createdAt: users?.createdAt,
 				updatedAt: users?.updatedAt,
 			};
@@ -163,7 +169,7 @@ router.get('/users', requireAuth, async (req, res) => {
 			users = await User.find({})
 				.populate('posts')
 				.populate('likes')
-				.populate('reposts');
+				.populate('repostUsers');
 			users.forEach((user) => {
 				userData.push({
 					_id: user?._id,
@@ -171,10 +177,11 @@ router.get('/users', requireAuth, async (req, res) => {
 					lastName: user?.lastName,
 					username: user?.username,
 					email: user?.email,
+					dob: user?.dob,
 					profilePic: user?.profilePic,
 					posts: user?.posts,
 					likes: user?.likes,
-					reposts: user?.reposts,
+					repostUsers: user?.repostUsers,
 					createdAt: user?.createdAt,
 					updatedAt: user?.updatedAt,
 				});
@@ -192,7 +199,6 @@ router.get('/users', requireAuth, async (req, res) => {
 async function getPosts(filter) {
 	let results = await Post.find(filter)
 		.populate('postedBy')
-		.populate('reposts')
 		.populate('repostData')
 		.populate('replyTo')
 		.sort('-createdAt');
@@ -204,11 +210,12 @@ async function getPosts(filter) {
 			lastName: postedBy.lastName,
 			username: postedBy.username,
 			email: postedBy.email,
+			dob: postedBy.dob,
 			profilePic: postedBy.profilePic,
 		};
 	});
 	results = await User.populate(results, { path: 'replyTo.postedBy' });
-	return results;
+	return await User.populate(results, { path: 'repostData.postedBy' });
 }
 
 module.exports = router;
