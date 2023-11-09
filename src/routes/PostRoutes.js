@@ -41,9 +41,7 @@ router.get('/posts', requireAuth, async (req, res) => {
 			let results = await getPosts({ _id: hasId });
 			results = results[0];
 
-			posts = {
-				results: results,
-			};
+			posts = results;
 
 			if (results.replyTo !== undefined) {
 				posts.replyTo = results.replyTo;
