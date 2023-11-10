@@ -38,15 +38,8 @@ router.get('/posts', requireAuth, async (req, res) => {
 
 	try {
 		if (hasId) {
-			let results = await getPosts({ _id: hasId });
-			results = results[0];
-
-			posts = results;
-
-			if (results.replyTo !== undefined) {
-				posts.replyTo = results.replyTo;
-			}
-
+			posts = await getPosts({ _id: hasId });
+			posts = posts[0];
 			posts.replies = await getPosts({ replyTo: hasId });
 		} else {
 			posts = await getPosts({});
@@ -146,6 +139,7 @@ router.delete('/posts/:id/delete', requireAuth, async (req, res) => {
 async function getPosts(filter) {
 	let results = await Post.find(filter)
 		.populate('postedBy')
+		.populate('replies')
 		.populate('repostData')
 		.populate('replyTo')
 		.sort('-createdAt');

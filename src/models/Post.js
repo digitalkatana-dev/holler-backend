@@ -45,4 +45,10 @@ const postSchema = new Schema(
 	}
 );
 
+postSchema.virtual('replies', {
+	ref: 'Post',
+	localField: '_id',
+	foreignField: 'replyTo',
+});
+
 model('Post', postSchema);

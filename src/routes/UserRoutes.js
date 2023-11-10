@@ -199,6 +199,7 @@ router.get('/users', requireAuth, async (req, res) => {
 async function getPosts(filter) {
 	let results = await Post.find(filter)
 		.populate('postedBy')
+		.populate('replies')
 		.populate('repostData')
 		.populate('replyTo')
 		.sort('-createdAt');
