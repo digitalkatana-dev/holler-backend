@@ -7,6 +7,7 @@ const { config } = require('dotenv');
 const { validateRegistration, validateLogin } = require('../util/validators');
 const requireAuth = require('../middleware/requireAuth');
 
+const Post = model('Post');
 const User = model('User');
 const router = Router();
 config();
@@ -20,7 +21,9 @@ router.post('/users/register', async (req, res) => {
 	const user = await User.findOne({
 		$or: [{ username: req?.body?.username }, { email: req?.body?.email }],
 	})
+		.populate('posts')
 		.populate('likes')
+		.populate('repostUsers')
 		.catch((err) => {
 			errors.message = 'Something went wrong!';
 			return res.status(400).json(errors);
@@ -46,11 +49,13 @@ router.post('/users/register', async (req, res) => {
 			_id: newUser?._id,
 			firstName: newUser?.firstName,
 			lastName: newUser?.lastName,
+			dob: newUser?.dob,
 			username: newUser?.username,
 			email: newUser?.email,
 			profilePic: newUser?.profilePic,
+			posts: newUser?.posts,
 			likes: newUser?.likes,
-			reposts: newUser?.reposts,
+			repostUsers: newUser?.repostUsers,
 			createdAt: newUser?.createdAt,
 			updatedAt: newUser?.updatedAt,
 		};
@@ -73,13 +78,16 @@ router.post('/users/login', async (req, res) => {
 
 	const user = await User.findOne({
 		$or: [{ username: login }, { email: login }],
-	}).populate('likes');
+	})
+		.populate('likes')
+		.populate('repostUsers');
 	if (!user) {
 		errors.message = 'Error, user not found!';
 		return res.status(404).json(errors);
 	}
 
 	try {
+		user.posts = await getPosts({ postedBy: user._id });
 		await user?.comparePassword(password);
 		const token = sign({ userId: user?._id }, process.env.DB_SECRET_KEY, {
 			expiresIn: '10d',
@@ -89,11 +97,13 @@ router.post('/users/login', async (req, res) => {
 			_id: user?._id,
 			firstName: user?.firstName,
 			lastName: user?.lastName,
+			dob: user?.dob,
 			username: user?.username,
 			email: user?.email,
 			profilePic: user?.profilePic,
 			likes: user?.likes,
-			reposts: user?.reposts,
+			posts: user?.posts,
+			repostUsers: user?.repostUsers,
 			createdAt: user?.createdAt,
 			updatedAt: user?.updatedAt,
 		};
@@ -110,38 +120,68 @@ router.post('/users/login', async (req, res) => {
 router.get('/users', requireAuth, async (req, res) => {
 	let errors = {};
 	const hasId = req?.query?.id;
+	const hasUsername = req?.query?.username;
 
 	try {
 		let users;
 		let userData;
 
 		if (hasId) {
-			users = await User.findById(hasId).populate('likes').populate('reposts');
+			users = await User.findById(hasId)
+				.populate('likes')
+				.populate('repostUsers');
+			users.posts = await getPosts({ postedBy: users._id });
 			userData = {
 				_id: users?._id,
 				firstName: users?.firstName,
 				lastName: users?.lastName,
+				dob: users?.dob,
 				username: users?.username,
 				email: users?.email,
 				profilePic: users?.profilePic,
+				posts: users?.posts,
 				likes: users?.likes,
-				reposts: users?.reposts,
+				repostUsers: users?.repostUsers,
+				createdAt: users?.createdAt,
+				updatedAt: users?.updatedAt,
+			};
+		} else if (hasUsername) {
+			users = await User.findOne({ username: hasUsername })
+				.populate('likes')
+				.populate('repostUsers');
+			users.posts = await getPosts({ postedBy: users._id });
+			userData = {
+				_id: users?._id,
+				firstName: users?.firstName,
+				lastName: users?.lastName,
+				dob: users?.dob,
+				username: users?.username,
+				email: users?.email,
+				profilePic: users?.profilePic,
+				posts: users?.posts,
+				likes: users?.likes,
+				repostUsers: users?.repostUsers,
 				createdAt: users?.createdAt,
 				updatedAt: users?.updatedAt,
 			};
 		} else {
 			userData = [];
-			users = await User.find({}).populate('likes').populate('reposts');
+			users = await User.find({})
+				.populate('posts')
+				.populate('likes')
+				.populate('repostUsers');
 			users.forEach((user) => {
 				userData.push({
 					_id: user?._id,
 					firstName: user?.firstName,
 					lastName: user?.lastName,
+					dob: user?.dob,
 					username: user?.username,
 					email: user?.email,
 					profilePic: user?.profilePic,
+					posts: user?.posts,
 					likes: user?.likes,
-					reposts: user?.reposts,
+					repostUsers: user?.repostUsers,
 					createdAt: user?.createdAt,
 					updatedAt: user?.updatedAt,
 				});
@@ -155,5 +195,28 @@ router.get('/users', requireAuth, async (req, res) => {
 		return res.status(400).json(errors);
 	}
 });
+
+async function getPosts(filter) {
+	let results = await Post.find(filter)
+		.populate('postedBy')
+		.populate('replies')
+		.populate('repostData')
+		.populate('replyTo')
+		.sort('-createdAt');
+	results.forEach(async (result) => {
+		let { postedBy } = result;
+		result.postedBy = {
+			_id: postedBy._id,
+			firstName: postedBy.firstName,
+			lastName: postedBy.lastName,
+			dob: postedBy.dob,
+			username: postedBy.username,
+			email: postedBy.email,
+			profilePic: postedBy.profilePic,
+		};
+	});
+	results = await User.populate(results, { path: 'replyTo.postedBy' });
+	return await User.populate(results, { path: 'repostData.postedBy' });
+}
 
 module.exports = router;

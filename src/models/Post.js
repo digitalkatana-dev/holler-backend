@@ -19,13 +19,17 @@ const postSchema = new Schema(
 				ref: 'User',
 			},
 		],
-		reposts: [
+		repostUsers: [
 			{
 				type: Schema.Types.ObjectId,
 				ref: 'User',
 			},
 		],
 		repostData: {
+			type: Schema.Types.ObjectId,
+			ref: 'Post',
+		},
+		replyTo: {
 			type: Schema.Types.ObjectId,
 			ref: 'Post',
 		},
@@ -40,5 +44,11 @@ const postSchema = new Schema(
 		timestamps: true,
 	}
 );
+
+postSchema.virtual('replies', {
+	ref: 'Post',
+	localField: '_id',
+	foreignField: 'replyTo',
+});
 
 model('Post', postSchema);

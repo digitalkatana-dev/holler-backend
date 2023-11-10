@@ -15,6 +15,7 @@ exports.validateRegistration = (data) => {
 
 	if (isEmpty(data?.firstName)) errors.firstName = 'Must not be empty!';
 	if (isEmpty(data?.lastName)) errors.lastName = 'Must not be empty!';
+	if (isEmpty(data?.dob)) errors.dob = 'Must not be empty!';
 	if (isEmpty(data?.username)) errors.username = 'Must not be empty!';
 	if (isEmpty(data?.email)) {
 		errors.email = 'Must not be empty!';

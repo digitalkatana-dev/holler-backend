@@ -14,6 +14,10 @@ const userSchema = new Schema(
 			required: true,
 			trim: true,
 		},
+		dob: {
+			type: String,
+			required: true,
+		},
 		username: {
 			type: String,
 			required: true,
@@ -56,6 +60,12 @@ const userSchema = new Schema(
 	}
 );
 
+userSchema.virtual('posts', {
+	ref: 'Post',
+	localField: '_id',
+	foreignField: 'postedBy',
+});
+
 userSchema.virtual('likes', {
 	ref: 'Post',
 	localField: '_id',
@@ -64,10 +74,10 @@ userSchema.virtual('likes', {
 	// options: { match: { likes: '$$localField' } },
 });
 
-userSchema.virtual('reposts', {
+userSchema.virtual('repostUsers', {
 	ref: 'Post',
 	localField: '_id',
-	foreignField: 'reposts',
+	foreignField: 'repostUsers',
 	justOne: false,
 });
 

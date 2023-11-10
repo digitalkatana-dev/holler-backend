@@ -16,6 +16,7 @@ router.post('/posts', requireAuth, async (req, res) => {
 			...req?.body,
 			postedBy: _id,
 		};
+
 		const newPost = new Post(postData);
 		await newPost?.save();
 
@@ -32,24 +33,17 @@ router.post('/posts', requireAuth, async (req, res) => {
 // Get Posts
 router.get('/posts', requireAuth, async (req, res) => {
 	let errors = {};
+	const hasId = req?.query?.id;
+	let posts;
 
 	try {
-		let posts = await Post.find({})
-			.populate('postedBy')
-			.populate('repostData')
-			.sort('-createdAt');
-		posts.forEach((post) => {
-			const { postedBy } = post;
-			post.postedBy = {
-				_id: postedBy._id,
-				firstName: postedBy.firstName,
-				lastName: postedBy.lastName,
-				username: postedBy.username,
-				email: postedBy.email,
-				profilePic: postedBy.profilePic,
-			};
-		});
-		posts = await User.populate(posts, { path: 'repostData.postedBy' });
+		if (hasId) {
+			posts = await getPosts({ _id: hasId });
+			posts = posts[0];
+			posts.replies = await getPosts({ replyTo: hasId });
+		} else {
+			posts = await getPosts({});
+		}
 
 		res.json(posts);
 	} catch (err) {
@@ -71,20 +65,17 @@ router.put('/posts/:id/like', requireAuth, async (req, res) => {
 	}
 
 	const likes = post.likes;
-	const isLiked = likes.includes(req?.user?._id);
+	const isLiked = likes.includes(req?.user?._id); // Check if user is in liked array
 	const option = isLiked ? '$pull' : '$push';
 
 	try {
-		const updated = await Post.findByIdAndUpdate(
+		await Post.findByIdAndUpdate(
 			id,
 			{ [option]: { likes: req?.user?._id } },
 			{ new: true }
 		);
 
-		res.json({
-			updated,
-			success: { message: 'Post liked/disliked successfully!' },
-		});
+		res.json({ success: { message: 'Post liked/disliked successfully!' } });
 	} catch (err) {
 		console.log(err);
 		errors.message = 'Error likeing post!';
@@ -92,7 +83,7 @@ router.put('/posts/:id/like', requireAuth, async (req, res) => {
 	}
 });
 
-// Repost
+// Repost/Remove Repost
 router.post('/posts/:id/repost', requireAuth, async (req, res) => {
 	let errors = {};
 	const { id } = req?.params;
@@ -107,18 +98,65 @@ router.post('/posts/:id/repost', requireAuth, async (req, res) => {
 	const option = deletedPost ? '$pull' : '$push';
 
 	try {
-		const updated = await Post.findByIdAndUpdate(
+		await Post.findByIdAndUpdate(
 			id,
-			{ [option]: { reposts: req?.user?._id } },
+			{ [option]: { repostUsers: req?.user?._id } },
 			{ new: true }
 		);
 
-		res.json({ updated, success: { message: 'Reposted successfully!' } });
+		res.json({ success: { message: 'Reposted successfully!' } });
 	} catch (err) {
 		console.log(err);
 		errors.message = 'Error reposting!';
 		return res.status(400).json(errors);
 	}
 });
+
+// Delete Post
+router.delete('/posts/:id/delete', requireAuth, async (req, res) => {
+	let errors = {};
+	const { id } = req?.params;
+
+	try {
+		const deletedPost = await Post.findByIdAndDelete(id);
+
+		if (!deletedPost) {
+			errors.message = 'Error, post not found!';
+			return res.status(404).json(errors);
+		}
+
+		res.json({
+			deletedPost,
+			success: { message: 'Post deleted successfully!' },
+		});
+	} catch (err) {
+		console.log(err);
+		errors.message = 'Error deleting post!';
+		return res.status(400).json(errors);
+	}
+});
+
+async function getPosts(filter) {
+	let results = await Post.find(filter)
+		.populate('postedBy')
+		.populate('replies')
+		.populate('repostData')
+		.populate('replyTo')
+		.sort('-createdAt');
+	results.forEach(async (result) => {
+		let { postedBy } = result;
+		result.postedBy = {
+			_id: postedBy._id,
+			firstName: postedBy.firstName,
+			lastName: postedBy.lastName,
+			dob: postedBy.dob,
+			username: postedBy.username,
+			email: postedBy.email,
+			profilePic: postedBy.profilePic,
+		};
+	});
+	results = await User.populate(results, { path: 'replyTo.postedBy' });
+	return await User.populate(results, { path: 'repostData.postedBy' });
+}
 
 module.exports = router;
