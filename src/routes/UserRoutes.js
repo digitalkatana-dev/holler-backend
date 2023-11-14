@@ -22,6 +22,7 @@ router.post('/users/register', async (req, res) => {
 		$or: [{ username: req?.body?.username }, { email: req?.body?.email }],
 	})
 		.populate('posts')
+		.populate('replies')
 		.populate('likes')
 		.populate('repostUsers')
 		.catch((err) => {
@@ -54,6 +55,7 @@ router.post('/users/register', async (req, res) => {
 			email: newUser?.email,
 			profilePic: newUser?.profilePic,
 			posts: newUser?.posts,
+			replies: newUser?.replies,
 			likes: newUser?.likes,
 			repostUsers: newUser?.repostUsers,
 			createdAt: newUser?.createdAt,
@@ -79,7 +81,11 @@ router.post('/users/login', async (req, res) => {
 	const user = await User.findOne({
 		$or: [{ username: login }, { email: login }],
 	})
+		.populate('posts')
+		.populate('replies')
 		.populate('likes')
+		.populate('following')
+		.populate('followers')
 		.populate('repostUsers');
 	if (!user) {
 		errors.message = 'Error, user not found!';
@@ -87,7 +93,14 @@ router.post('/users/login', async (req, res) => {
 	}
 
 	try {
-		user.posts = await getPosts({ postedBy: user._id });
+		user.posts = await getPosts({
+			postedBy: user._id,
+			replyTo: { $exists: false },
+		});
+		user.replies = await getPosts({
+			postedBy: user._id,
+			replyTo: { $exists: true },
+		});
 		await user?.comparePassword(password);
 		const token = sign({ userId: user?._id }, process.env.DB_SECRET_KEY, {
 			expiresIn: '10d',
@@ -102,7 +115,10 @@ router.post('/users/login', async (req, res) => {
 			email: user?.email,
 			profilePic: user?.profilePic,
 			likes: user?.likes,
+			following: user?.following,
+			followers: user?.followers,
 			posts: user?.posts,
+			replies: user?.replies,
 			repostUsers: user?.repostUsers,
 			createdAt: user?.createdAt,
 			updatedAt: user?.updatedAt,
@@ -129,8 +145,17 @@ router.get('/users', requireAuth, async (req, res) => {
 		if (hasId) {
 			users = await User.findById(hasId)
 				.populate('likes')
+				.populate('following')
+				.populate('followers')
 				.populate('repostUsers');
-			users.posts = await getPosts({ postedBy: users._id });
+			users.posts = await getPosts({
+				postedBy: users._id,
+				replyTo: { $exists: false },
+			});
+			users.replies = await getPosts({
+				postedBy: users._id,
+				replyTo: { $exists: true },
+			});
 			userData = {
 				_id: users?._id,
 				firstName: users?.firstName,
@@ -140,7 +165,10 @@ router.get('/users', requireAuth, async (req, res) => {
 				email: users?.email,
 				profilePic: users?.profilePic,
 				posts: users?.posts,
+				replies: users?.replies,
 				likes: users?.likes,
+				following: users?.following,
+				followers: users?.followers,
 				repostUsers: users?.repostUsers,
 				createdAt: users?.createdAt,
 				updatedAt: users?.updatedAt,
@@ -148,8 +176,17 @@ router.get('/users', requireAuth, async (req, res) => {
 		} else if (hasUsername) {
 			users = await User.findOne({ username: hasUsername })
 				.populate('likes')
+				.populate('following')
+				.populate('followers')
 				.populate('repostUsers');
-			users.posts = await getPosts({ postedBy: users._id });
+			users.posts = await getPosts({
+				postedBy: users._id,
+				replyTo: { $exists: false },
+			});
+			users.replies = await getPosts({
+				postedBy: users._id,
+				replyTo: { $exists: true },
+			});
 			userData = {
 				_id: users?._id,
 				firstName: users?.firstName,
@@ -159,7 +196,10 @@ router.get('/users', requireAuth, async (req, res) => {
 				email: users?.email,
 				profilePic: users?.profilePic,
 				posts: users?.posts,
+				replies: users?.replies,
 				likes: users?.likes,
+				following: users?.following,
+				followers: users?.followers,
 				repostUsers: users?.repostUsers,
 				createdAt: users?.createdAt,
 				updatedAt: users?.updatedAt,
@@ -168,7 +208,10 @@ router.get('/users', requireAuth, async (req, res) => {
 			userData = [];
 			users = await User.find({})
 				.populate('posts')
+				.populate('replies')
 				.populate('likes')
+				.populate('following')
+				.populate('followers')
 				.populate('repostUsers');
 			users.forEach((user) => {
 				userData.push({
@@ -180,7 +223,10 @@ router.get('/users', requireAuth, async (req, res) => {
 					email: user?.email,
 					profilePic: user?.profilePic,
 					posts: user?.posts,
+					replies: user?.replies,
 					likes: user?.likes,
+					following: user?.following,
+					followers: user?.followers,
 					repostUsers: user?.repostUsers,
 					createdAt: user?.createdAt,
 					updatedAt: user?.updatedAt,
@@ -192,6 +238,39 @@ router.get('/users', requireAuth, async (req, res) => {
 	} catch (err) {
 		console.log(err);
 		errors.message = 'Error getting users!';
+		return res.status(400).json(errors);
+	}
+});
+
+// Follow/Unfollow User
+router.put('/users/:id/follow', requireAuth, async (req, res) => {
+	let errors = {};
+	const { id } = req?.params;
+
+	const user = req?.user;
+	const profile = await User.findById(id);
+	if (!profile) {
+		errors.message = 'Error, user not found!';
+		return res.status(404).json(errors);
+	}
+
+	const following = user.following;
+	const isFollowing = following.includes(id);
+	const option = isFollowing ? '$pull' : '$push';
+
+	try {
+		await User.findByIdAndUpdate(
+			user._id,
+			{ [option]: { following: id } },
+			{ new: true }
+		);
+
+		res.json({
+			success: { message: 'User followed/unfollowed successfully!' },
+		});
+	} catch (err) {
+		console.log(err);
+		errors.message = 'Error following user!';
 		return res.status(400).json(errors);
 	}
 });
