@@ -39,6 +39,15 @@ const userSchema = new Schema(
 			default:
 				'https://res.cloudinary.com/dcxmdnu2h/image/upload/v1639711780/uvwhfglx0nhcfkvalyh7.jpg',
 		},
+		coverPhoto: {
+			type: String,
+		},
+		following: [
+			{
+				type: Schema.Types.ObjectId,
+				ref: 'User',
+			},
+		],
 		passwordChangeAt: {
 			type: Date,
 		},
@@ -64,6 +73,14 @@ userSchema.virtual('posts', {
 	ref: 'Post',
 	localField: '_id',
 	foreignField: 'postedBy',
+	options: { match: { replyTo: { $exists: false } } },
+});
+
+userSchema.virtual('replies', {
+	ref: 'Post',
+	localField: '_id',
+	foreignField: 'postedBy',
+	options: { match: { replyTo: { $exists: true } } },
 });
 
 userSchema.virtual('likes', {
@@ -72,6 +89,12 @@ userSchema.virtual('likes', {
 	foreignField: 'likes',
 	justOne: false,
 	// options: { match: { likes: '$$localField' } },
+});
+
+userSchema.virtual('followers', {
+	ref: 'User',
+	localField: '_id',
+	foreignField: 'following',
 });
 
 userSchema.virtual('repostUsers', {

@@ -34,6 +34,7 @@ router.post('/posts', requireAuth, async (req, res) => {
 router.get('/posts', requireAuth, async (req, res) => {
 	let errors = {};
 	const hasId = req?.query?.id;
+	const followingOnly = req?.query?.following;
 	let posts;
 
 	try {
@@ -41,6 +42,11 @@ router.get('/posts', requireAuth, async (req, res) => {
 			posts = await getPosts({ _id: hasId });
 			posts = posts[0];
 			posts.replies = await getPosts({ replyTo: hasId });
+		} else if (followingOnly) {
+			let followingIds = req?.user?.following;
+			followingIds.push(req?.user?._id);
+
+			posts = await getPosts({ postedBy: { $in: followingIds } });
 		} else {
 			posts = await getPosts({});
 		}
