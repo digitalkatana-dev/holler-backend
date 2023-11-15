@@ -5,12 +5,32 @@ const { genSalt, hash } = require('bcrypt');
 const { createHash } = require('crypto');
 const { config } = require('dotenv');
 const { validateRegistration, validateLogin } = require('../util/validators');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const requireAuth = require('../middleware/requireAuth');
 
 const Post = model('Post');
 const User = model('User');
 const router = Router();
 config();
+
+const storage = multer.diskStorage({
+	destination: 'uploads/',
+	filename: function (req, file, cb) {
+		cb(null, file.originalname); // Use the original name as the filename
+	},
+});
+const filter = (req, file, cb) => {
+	file.mimetype.startsWith('image')
+		? cb(null, true)
+		: cb({ message: 'Unsupported file format.' }, false);
+};
+const upload = multer({
+	storage: storage,
+	fileFilter: filter,
+	limits: { fileSize: 6000000, fieldSize: 25 * 1024 * 1024 },
+});
 
 //Register
 router.post('/users/register', async (req, res) => {
@@ -274,6 +294,70 @@ router.put('/users/:id/follow', requireAuth, async (req, res) => {
 		return res.status(400).json(errors);
 	}
 });
+
+// Upload Profile Pic
+router.post(
+	'/users/profile-pic',
+	requireAuth,
+	upload.single('profilePic'),
+	async (req, res) => {
+		let errors = {};
+
+		const filePath = `/uploads/images/${req?.file?.filename}.png`;
+		const tempPath = req?.file?.path;
+		const targetPath = path.join(__dirname, `../../${filePath}`);
+
+		try {
+			fs.rename(tempPath, targetPath, (error) => console.log(error));
+			const user = await User.findByIdAndUpdate(
+				req?.user?._id,
+				{
+					$set: {
+						profilePic: `http://localhost:3005${filePath}`,
+					},
+				},
+				{
+					new: true,
+				}
+			)
+				.populate('posts')
+				.populate('replies')
+				.populate('likes')
+				.populate('following')
+				.populate('followers')
+				.populate('repostUsers');
+
+			const userData = {
+				_id: user?._id,
+				firstName: user?.firstName,
+				lastName: user?.lastName,
+				dob: user?.dob,
+				username: user?.username,
+				email: user?.email,
+				profilePic: user?.profilePic,
+				likes: user?.likes,
+				following: user?.following,
+				followers: user?.followers,
+				posts: user?.posts,
+				replies: user?.replies,
+				repostUsers: user?.repostUsers,
+				createdAt: user?.createdAt,
+				updatedAt: user?.updatedAt,
+			};
+
+			res.json({
+				userData,
+				success: { message: 'Profile pic uploaded successfully!' },
+			});
+		} catch (err) {
+			console.log(err);
+			errors.message = 'Error uploading profile pic!';
+			return res.status(400).json(errors);
+		}
+	}
+);
+
+// Upload Cover Pic
 
 async function getPosts(filter) {
 	let results = await Post.find(filter)
