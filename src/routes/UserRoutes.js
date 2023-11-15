@@ -29,7 +29,7 @@ const filter = (req, file, cb) => {
 const upload = multer({
 	storage: storage,
 	fileFilter: filter,
-	limits: { fileSize: 6000000, fieldSize: 25 * 1024 * 1024 },
+	limits: { fileSize: 6000000000, fieldSize: 25 * 1024 * 1024 },
 });
 
 //Register
@@ -74,6 +74,7 @@ router.post('/users/register', async (req, res) => {
 			username: newUser?.username,
 			email: newUser?.email,
 			profilePic: newUser?.profilePic,
+			coverPhoto: user?.coverPhoto,
 			posts: newUser?.posts,
 			replies: newUser?.replies,
 			likes: newUser?.likes,
@@ -134,6 +135,7 @@ router.post('/users/login', async (req, res) => {
 			username: user?.username,
 			email: user?.email,
 			profilePic: user?.profilePic,
+			coverPhoto: user?.coverPhoto,
 			likes: user?.likes,
 			following: user?.following,
 			followers: user?.followers,
@@ -184,6 +186,7 @@ router.get('/users', requireAuth, async (req, res) => {
 				username: users?.username,
 				email: users?.email,
 				profilePic: users?.profilePic,
+				coverPhoto: users?.coverPhoto,
 				posts: users?.posts,
 				replies: users?.replies,
 				likes: users?.likes,
@@ -215,6 +218,7 @@ router.get('/users', requireAuth, async (req, res) => {
 				username: users?.username,
 				email: users?.email,
 				profilePic: users?.profilePic,
+				coverPhoto: users?.coverPhoto,
 				posts: users?.posts,
 				replies: users?.replies,
 				likes: users?.likes,
@@ -242,6 +246,7 @@ router.get('/users', requireAuth, async (req, res) => {
 					username: user?.username,
 					email: user?.email,
 					profilePic: user?.profilePic,
+					coverPhoto: user?.coverPhoto,
 					posts: user?.posts,
 					replies: user?.replies,
 					likes: user?.likes,
@@ -308,7 +313,7 @@ router.post(
 		const targetPath = path.join(__dirname, `../../${filePath}`);
 
 		try {
-			fs.rename(tempPath, targetPath, (error) => console.log(error));
+			fs.rename(tempPath, targetPath, (error) => error && console.log(error));
 			const user = await User.findByIdAndUpdate(
 				req?.user?._id,
 				{
@@ -335,6 +340,7 @@ router.post(
 				username: user?.username,
 				email: user?.email,
 				profilePic: user?.profilePic,
+				coverPhoto: user?.coverPhoto,
 				likes: user?.likes,
 				following: user?.following,
 				followers: user?.followers,
@@ -357,7 +363,68 @@ router.post(
 	}
 );
 
-// Upload Cover Pic
+// Upload Cover Photo
+router.post(
+	'/users/cover-photo',
+	requireAuth,
+	upload.single('coverPhoto'),
+	async (req, res) => {
+		let errors = {};
+
+		const filePath = `/uploads/images/${req?.file?.filename}.png`;
+		const tempPath = req?.file?.path;
+		const targetPath = path.join(__dirname, `../../${filePath}`);
+
+		try {
+			fs.rename(tempPath, targetPath, (error) => error && console.log(error));
+			const user = await User.findByIdAndUpdate(
+				req?.user?._id,
+				{
+					$set: {
+						coverPhoto: `http://localhost:3005${filePath}`,
+					},
+				},
+				{
+					new: true,
+				}
+			)
+				.populate('posts')
+				.populate('replies')
+				.populate('likes')
+				.populate('following')
+				.populate('followers')
+				.populate('repostUsers');
+
+			const userData = {
+				_id: user?._id,
+				firstName: user?.firstName,
+				lastName: user?.lastName,
+				dob: user?.dob,
+				username: user?.username,
+				email: user?.email,
+				profilePic: user?.profilePic,
+				coverPhoto: user?.coverPhoto,
+				likes: user?.likes,
+				following: user?.following,
+				followers: user?.followers,
+				posts: user?.posts,
+				replies: user?.replies,
+				repostUsers: user?.repostUsers,
+				createdAt: user?.createdAt,
+				updatedAt: user?.updatedAt,
+			};
+
+			res.json({
+				userData,
+				success: { message: 'Cover photo uploaded successfully!' },
+			});
+		} catch (err) {
+			console.log(err);
+			errors.message = 'Error uploading cover photo!';
+			return res.status(400).json(errors);
+		}
+	}
+);
 
 async function getPosts(filter) {
 	let results = await Post.find(filter)
