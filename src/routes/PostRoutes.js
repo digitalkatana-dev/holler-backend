@@ -118,6 +118,36 @@ router.post('/posts/:id/repost', requireAuth, async (req, res) => {
 	}
 });
 
+// Pin/Unpin Post
+router.put('/posts/:id/pin', requireAuth, async (req, res) => {
+	let errors = {};
+	const { id } = req?.params;
+
+	const post = await Post.findById(id);
+
+	try {
+		await Post.updateMany({ postedBy: req?.user?._id }, { pinned: false });
+
+		await Post.findByIdAndUpdate(
+			id,
+			{
+				$set: {
+					pinned: !post.pinned,
+				},
+			},
+			{
+				new: true,
+			}
+		);
+
+		res.json({ success: { message: 'Post pinned/unpinned successfully!' } });
+	} catch (err) {
+		console.log(err);
+		errors.message = 'Error pinning post!';
+		return res.status(400).json(errors);
+	}
+});
+
 // Delete Post
 router.delete('/posts/:id/delete', requireAuth, async (req, res) => {
 	let errors = {};
