@@ -34,6 +34,7 @@ router.post('/posts', requireAuth, async (req, res) => {
 router.get('/posts', requireAuth, async (req, res) => {
 	let errors = {};
 	const hasId = req?.query?.id;
+	const hasSearch = req?.query?.search;
 	const followingOnly = req?.query?.following;
 	let posts;
 
@@ -42,6 +43,8 @@ router.get('/posts', requireAuth, async (req, res) => {
 			posts = await getPosts({ _id: hasId });
 			posts = posts[0];
 			posts.replies = await getPosts({ replyTo: hasId });
+		} else if (hasSearch) {
+			posts = await getPosts({ content: { $regex: hasSearch, $options: 'i' } });
 		} else if (followingOnly) {
 			let followingIds = req?.user?.following;
 			followingIds.push(req?.user?._id);
