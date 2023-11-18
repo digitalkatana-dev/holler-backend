@@ -34,6 +34,7 @@ router.post('/posts', requireAuth, async (req, res) => {
 router.get('/posts', requireAuth, async (req, res) => {
 	let errors = {};
 	const hasId = req?.query?.id;
+	const hasSearch = req?.query?.search;
 	const followingOnly = req?.query?.following;
 	let posts;
 
@@ -42,6 +43,8 @@ router.get('/posts', requireAuth, async (req, res) => {
 			posts = await getPosts({ _id: hasId });
 			posts = posts[0];
 			posts.replies = await getPosts({ replyTo: hasId });
+		} else if (hasSearch) {
+			posts = await getPosts({ content: { $regex: hasSearch, $options: 'i' } });
 		} else if (followingOnly) {
 			let followingIds = req?.user?.following;
 			followingIds.push(req?.user?._id);
@@ -114,6 +117,36 @@ router.post('/posts/:id/repost', requireAuth, async (req, res) => {
 	} catch (err) {
 		console.log(err);
 		errors.message = 'Error reposting!';
+		return res.status(400).json(errors);
+	}
+});
+
+// Pin/Unpin Post
+router.put('/posts/:id/pin', requireAuth, async (req, res) => {
+	let errors = {};
+	const { id } = req?.params;
+
+	const post = await Post.findById(id);
+
+	try {
+		await Post.updateMany({ postedBy: req?.user?._id }, { pinned: false });
+
+		await Post.findByIdAndUpdate(
+			id,
+			{
+				$set: {
+					pinned: !post.pinned,
+				},
+			},
+			{
+				new: true,
+			}
+		);
+
+		res.json({ success: { message: 'Post pinned/unpinned successfully!' } });
+	} catch (err) {
+		console.log(err);
+		errors.message = 'Error pinning post!';
 		return res.status(400).json(errors);
 	}
 });

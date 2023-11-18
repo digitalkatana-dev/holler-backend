@@ -159,6 +159,7 @@ router.get('/users', requireAuth, async (req, res) => {
 	let errors = {};
 	const hasId = req?.query?.id;
 	const hasUsername = req?.query?.username;
+	const hasSearch = req?.query?.search;
 
 	try {
 		let users;
@@ -228,6 +229,41 @@ router.get('/users', requireAuth, async (req, res) => {
 				createdAt: users?.createdAt,
 				updatedAt: users?.updatedAt,
 			};
+		} else if (hasSearch) {
+			userData = [];
+			users = await User.find({
+				$or: [
+					{ firstName: { $regex: hasSearch, $options: 'i' } },
+					{ lastName: { $regex: hasSearch, $options: 'i' } },
+					{ username: { $regex: hasSearch, $options: 'i' } },
+				],
+			})
+				.populate('posts')
+				.populate('replies')
+				.populate('likes')
+				.populate('following')
+				.populate('followers')
+				.populate('repostUsers');
+			users.forEach((user) => {
+				userData.push({
+					_id: user?._id,
+					firstName: user?.firstName,
+					lastName: user?.lastName,
+					dob: user?.dob,
+					username: user?.username,
+					email: user?.email,
+					profilePic: user?.profilePic,
+					coverPhoto: user?.coverPhoto,
+					posts: user?.posts,
+					replies: user?.replies,
+					likes: user?.likes,
+					following: user?.following,
+					followers: user?.followers,
+					repostUsers: user?.repostUsers,
+					createdAt: user?.createdAt,
+					updatedAt: user?.updatedAt,
+				});
+			});
 		} else {
 			userData = [];
 			users = await User.find({})

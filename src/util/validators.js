@@ -46,3 +46,15 @@ exports.validateLogin = (data) => {
 		valid: Object.keys(errors).length === 0 ? true : false,
 	};
 };
+
+exports.validateCreateChat = (data) => {
+	let errors = {};
+
+	if (!data.users || data.users.length === 0)
+		errors.users = "Can't start a chat without recipients!";
+
+	return {
+		errors,
+		valid: Object.keys(errors).length === 0 ? true : false,
+	};
+};

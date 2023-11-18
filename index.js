@@ -1,13 +1,17 @@
 require('./src/models/User');
 require('./src/models/Post');
+require('./src/models/Chat');
+require('./src/models/Message');
 const { config } = require('dotenv');
 const { set, connect, connection } = require('mongoose');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const uploadRoutes = require('./src/routes/uploadRoutes');
 const userRoutes = require('./src/routes/UserRoutes');
 const postRoutes = require('./src/routes/PostRoutes');
-const uploadRoutes = require('./src/routes/uploadRoutes');
+const chatRoutes = require('./src/routes/ChatRoutes');
+const messageRoutes = require('./src/routes/MessageRoutes');
 config();
 
 const app = express();
@@ -32,6 +36,8 @@ connection.on('error', (err) => {
 app.use(uploadRoutes);
 app.use(userRoutes);
 app.use(postRoutes);
+app.use(chatRoutes);
+app.use(messageRoutes);
 
 const port = process.env.PORT || 3005;
 
