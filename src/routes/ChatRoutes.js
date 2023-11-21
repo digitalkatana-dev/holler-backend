@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { model } = require('mongoose');
+const { model, isValidObjectId } = require('mongoose');
 const { validateCreateChat } = require('../util/validators');
 const requireAuth = require('../middleware/requireAuth');
 
@@ -63,13 +63,63 @@ router.post('/chats', requireAuth, async (req, res) => {
 // Read
 router.get('/chats', requireAuth, async (req, res) => {
 	let errors = {};
+	const hasId = req?.query?.id;
+	let chats;
 
 	try {
-		const chats = await Chat.find({
-			users: { $elemMatch: { $eq: req?.user?._id } },
-		})
-			.populate('users')
-			.sort('createdAt');
+		if (hasId) {
+			const isValid = isValidObjectId(hasId);
+			if (!isValid) {
+				errors.message =
+					'Error, chat does not exist or you do not have permission to view it.';
+				return res.status(404).json(errors);
+			}
+
+			chats = await Chat.findOne({
+				_id: hasId,
+				users: { $elemMatch: { $eq: req?.user?._id } },
+			}).populate('users');
+
+			if (!chats) {
+				const userFound = await User.findById(hasId);
+				if (userFound) {
+					chats = await Chat.findOneAndUpdate(
+						{
+							isGroupChat: false,
+							users: {
+								$size: 2,
+								$all: [
+									{
+										$elemMatch: {
+											$eq: req?.user?._id,
+										},
+									},
+									{
+										$elemMatch: { $eq: userFound._id },
+									},
+								],
+							},
+						},
+						{
+							$setOnInsert: {
+								users: [req?.user?._id, userFound._id],
+							},
+						},
+						{
+							new: true,
+							upsert: true,
+						}
+					).populate('users');
+				}
+			}
+		} else {
+			chats = await Chat.find({
+				users: { $elemMatch: { $eq: req?.user?._id } },
+			})
+				.populate('users')
+				.sort('-updatedAt');
+		}
+
 		res.json(chats);
 	} catch (err) {
 		console.log(err);
@@ -77,5 +127,4 @@ router.get('/chats', requireAuth, async (req, res) => {
 		return res.status(400).json(errors);
 	}
 });
-
 module.exports = router;
