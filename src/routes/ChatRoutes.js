@@ -127,4 +127,7 @@ router.get('/chats', requireAuth, async (req, res) => {
 		return res.status(400).json(errors);
 	}
 });
+
+// Update
+router.put('/chats/:id', requireAuth, async (req, res) => {});
 module.exports = router;
