@@ -129,5 +129,55 @@ router.get('/chats', requireAuth, async (req, res) => {
 });
 
 // Update
-router.put('/chats/:id', requireAuth, async (req, res) => {});
+router.put('/chats/:id', requireAuth, async (req, res) => {
+	let errors = {};
+	const { id } = req?.params;
+
+	const updated = await Chat.findByIdAndUpdate(
+		id,
+		{
+			$set: req?.body,
+		},
+		{
+			new: true,
+		}
+	).populate('users');
+
+	try {
+		if (!updated) {
+			errors.message =
+				"Error, chat chat not found or you don't have permission to update it.";
+			return res.status(404).json(errors);
+		}
+
+		res.json({ updated, success: { message: 'Chat updated successfully!' } });
+	} catch (err) {
+		console.log(err);
+		errors.message = 'Error, unable to update chat.';
+		return res.status(400).json(errors);
+	}
+});
+
+// Delete
+router.delete('/chats/:id', requireAuth, async (req, res) => {
+	let errors = {};
+	const { id } = req?.params;
+
+	const deleted = await Chat.findByIdAndDelete(id);
+
+	try {
+		if (!deleted) {
+			errors.message =
+				"Error, chat not found or you don't have permission to delete it.";
+			return res.status(404).json(errors);
+		}
+
+		return res.json({ success: { message: 'Chat deleted successfully!' } });
+	} catch (err) {
+		console.log(err);
+		errors.message = 'Error, unable to delete chat!';
+		return res.status(400).json(errors);
+	}
+});
+
 module.exports = router;
