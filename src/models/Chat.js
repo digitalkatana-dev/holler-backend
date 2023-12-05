@@ -18,7 +18,7 @@ const chatSchema = new Schema(
 		],
 		latestMessage: {
 			type: Schema.Types.ObjectId,
-			ref: 'Messages',
+			ref: 'Message',
 		},
 	},
 	{
@@ -31,5 +31,11 @@ const chatSchema = new Schema(
 		timestamps: true,
 	}
 );
+
+chatSchema.virtual('messages', {
+	ref: 'Message',
+	localField: '_id',
+	foreignField: 'chat',
+});
 
 model('Chat', chatSchema);

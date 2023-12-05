@@ -58,3 +58,16 @@ exports.validateCreateChat = (data) => {
 		valid: Object.keys(errors).length === 0 ? true : false,
 	};
 };
+
+exports.validateMessage = (data) => {
+	let errors = {};
+
+	if (!data.content || !data.chatId)
+		errors.message = 'Invalid data passed to request';
+	if (isEmpty(data?.content)) errors.content = 'Must not be empty!';
+
+	return {
+		errors,
+		valid: Object.keys(errors).length === 0 ? true : false,
+	};
+};

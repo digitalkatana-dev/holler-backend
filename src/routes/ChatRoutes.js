@@ -78,7 +78,10 @@ router.get('/chats', requireAuth, async (req, res) => {
 			chats = await Chat.findOne({
 				_id: hasId,
 				users: { $elemMatch: { $eq: req?.user?._id } },
-			}).populate('users');
+			})
+				.populate('users')
+				.populate('messages')
+				.populate('latestMessage');
 
 			if (!chats) {
 				const userFound = await User.findById(hasId);
@@ -109,7 +112,10 @@ router.get('/chats', requireAuth, async (req, res) => {
 							new: true,
 							upsert: true,
 						}
-					).populate('users');
+					)
+						.populate('users')
+						.populate('messages')
+						.populate('latestMessage');
 				}
 			}
 		} else {
@@ -117,6 +123,8 @@ router.get('/chats', requireAuth, async (req, res) => {
 				users: { $elemMatch: { $eq: req?.user?._id } },
 			})
 				.populate('users')
+				.populate('messages')
+				.populate('latestMessage')
 				.sort('-updatedAt');
 		}
 
@@ -141,7 +149,10 @@ router.put('/chats/:id', requireAuth, async (req, res) => {
 		{
 			new: true,
 		}
-	).populate('users');
+	)
+		.populate('users')
+		.populate('messages')
+		.populate('latestMessage');
 
 	try {
 		if (!updated) {

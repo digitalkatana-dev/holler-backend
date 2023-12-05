@@ -2,24 +2,23 @@ const { Schema, model } = require('mongoose');
 
 const messageSchema = new Schema(
 	{
-		chatName: {
+		sender: {
+			type: Object,
+		},
+		content: {
 			type: String,
 			trim: true,
 		},
-		isGroupChat: {
-			type: Boolean,
-			default: false,
+		chat: {
+			type: Schema.Types.ObjectId,
+			ref: 'Chat',
 		},
-		users: [
+		readBy: [
 			{
 				type: Schema.Types.ObjectId,
-				ref: 'Users',
+				ref: 'User',
 			},
 		],
-		latestMessage: {
-			type: Schema.Types.ObjectId,
-			ref: 'Messages',
-		},
 	},
 	{
 		toJSON: {
