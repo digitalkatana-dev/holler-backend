@@ -4,9 +4,11 @@ require('./src/models/Chat');
 require('./src/models/Message');
 const { config } = require('dotenv');
 const { set, connect, connection } = require('mongoose');
+const { Server } = require('socket.io');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const http = require('http');
 const uploadRoutes = require('./src/routes/uploadRoutes');
 const userRoutes = require('./src/routes/UserRoutes');
 const postRoutes = require('./src/routes/PostRoutes');
@@ -39,13 +41,21 @@ app.use(postRoutes);
 app.use(chatRoutes);
 app.use(messageRoutes);
 
+const server = http.createServer(app);
+
+const io = new Server(server, {
+	cors: {
+		origin: 'http://localhost:3000',
+		methods: ['GET', 'POST'],
+	},
+});
+
 const port = process.env.PORT || 3005;
 
-const server = app.listen(port, () => {
-	console.log(`Listening on port ${port}`);
-});
-const io = require('socket.io')(server, { pingTimeout: 60000 });
-
 io.on('connection', (socket) => {
-	console.log('Connected to socket io');
+	console.log(`User connected: ${socket.id}`);
+});
+
+server.listen(port, () => {
+	console.log(`Listening on port ${port}`);
 });
