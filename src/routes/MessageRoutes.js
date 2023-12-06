@@ -31,10 +31,12 @@ router.post('/messages', requireAuth, async (req, res) => {
 			chat: chatId,
 		};
 
-		const newMessage = new Message(messageData);
-		await newMessage?.save();
+		const rawMessage = new Message(messageData);
+		await rawMessage?.save();
 
-		await Chat.findByIdAndUpdate(chatId, { latestMessage: newMessage });
+		await Chat.findByIdAndUpdate(chatId, { latestMessage: rawMessage });
+
+		const newMessage = await Message.findById(rawMessage._id).populate('chat');
 
 		res.status(201).json({
 			newMessage,

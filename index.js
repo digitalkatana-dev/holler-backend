@@ -48,12 +48,41 @@ const io = new Server(server, {
 		origin: 'http://localhost:3000',
 		methods: ['GET', 'POST'],
 	},
+	pingTimeout: 60000,
 });
 
 const port = process.env.PORT || 3005;
 
 io.on('connection', (socket) => {
-	console.log(`User connected: ${socket.id}`);
+	socket.on('setup', (userData) => {
+		console.log(`User connected: ${userData._id}`);
+		socket.join(userData._id);
+		socket.emit('connected');
+	});
+
+	socket.on('join room', (room) => {
+		socket.join(room);
+		socket.emit('joined');
+	});
+
+	socket.on('typing', (room) => {
+		socket.in(room).emit('typing');
+	});
+
+	socket.on('stop typing', (room) => {
+		socket.in(room).emit('stop typing');
+	});
+
+	socket.on('new message', (newMessage) => {
+		// console.log('Message', newMessage);
+		let chat = newMessage.chat;
+		if (!chat.users) return console.log('Chat.users not defined');
+
+		chat.users.forEach((user) => {
+			if (user == newMessage.sender._id) return;
+			socket.in(user).emit('message received');
+		});
+	});
 });
 
 server.listen(port, () => {
