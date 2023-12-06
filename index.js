@@ -2,6 +2,7 @@ require('./src/models/User');
 require('./src/models/Post');
 require('./src/models/Chat');
 require('./src/models/Message');
+require('./src/models/Notification');
 const { config } = require('dotenv');
 const { set, connect, connection } = require('mongoose');
 const { Server } = require('socket.io');
@@ -9,11 +10,12 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const http = require('http');
-const uploadRoutes = require('./src/routes/uploadRoutes');
+const uploadRoutes = require('./src/routes/UploadRoutes');
 const userRoutes = require('./src/routes/UserRoutes');
 const postRoutes = require('./src/routes/PostRoutes');
 const chatRoutes = require('./src/routes/ChatRoutes');
 const messageRoutes = require('./src/routes/MessageRoutes');
+const notificationRoutes = require('./src/routes/NotificationRoutes');
 config();
 
 const app = express();
@@ -40,6 +42,7 @@ app.use(userRoutes);
 app.use(postRoutes);
 app.use(chatRoutes);
 app.use(messageRoutes);
+app.use(notificationRoutes);
 
 const server = http.createServer(app);
 

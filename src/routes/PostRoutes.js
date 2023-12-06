@@ -4,6 +4,7 @@ const requireAuth = require('../middleware/requireAuth');
 
 const Post = model('Post');
 const User = model('User');
+const Notification = model('Notification');
 const router = Router();
 
 // Create Post
@@ -17,8 +18,20 @@ router.post('/posts', requireAuth, async (req, res) => {
 			postedBy: _id,
 		};
 
-		const newPost = new Post(postData);
+		let newPost = new Post(postData);
 		await newPost?.save();
+
+		newPost = await User.populate(newPost, { path: 'postedBy' });
+		newPost = await Post.populate(newPost, { path: 'replyTo' });
+
+		if (newPost.replyTo !== undefined) {
+			await Notification.insertNotification(
+				newPost.replyTo.postedBy,
+				req?.user?._id,
+				'reply',
+				newPost._id
+			);
+		}
 
 		res
 			.status(201)
@@ -78,11 +91,20 @@ router.put('/posts/:id/like', requireAuth, async (req, res) => {
 	const option = isLiked ? '$pull' : '$push';
 
 	try {
-		await Post.findByIdAndUpdate(
+		const updatedPost = await Post.findByIdAndUpdate(
 			id,
 			{ [option]: { likes: req?.user?._id } },
 			{ new: true }
 		);
+
+		if (!isLiked) {
+			await Notification.insertNotification(
+				updatedPost.postedBy,
+				req?.user?._id,
+				'like',
+				updatedPost._id
+			);
+		}
 
 		res.json({ success: { message: 'Post liked/disliked successfully!' } });
 	} catch (err) {
@@ -107,11 +129,20 @@ router.post('/posts/:id/repost', requireAuth, async (req, res) => {
 	const option = deletedPost ? '$pull' : '$push';
 
 	try {
-		await Post.findByIdAndUpdate(
+		const post = await Post.findByIdAndUpdate(
 			id,
 			{ [option]: { repostUsers: req?.user?._id } },
 			{ new: true }
 		);
+
+		if (!deletedPost) {
+			await Notification.insertNotification(
+				post.postedBy,
+				req?.user?._id,
+				'repost',
+				post._id
+			);
+		}
 
 		res.json({ success: { message: 'Reposted successfully!' } });
 	} catch (err) {
