@@ -64,9 +64,12 @@ io.on('connection', (socket) => {
 	});
 
 	socket.on('join room', (room) => {
+		console.log('Joined room:', room);
 		socket.join(room);
 		socket.emit('joined');
 	});
+
+	socket.on('end chat', () => console.log('Disconnected from chat'));
 
 	socket.on('typing', (room) => {
 		socket.in(room).emit('typing');
