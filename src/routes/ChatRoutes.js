@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { model } = require('mongoose');
+const { model, isValidObjectId } = require('mongoose');
 const { validateCreateChat } = require('../util/validators');
 const requireAuth = require('../middleware/requireAuth');
 
@@ -63,17 +63,130 @@ router.post('/chats', requireAuth, async (req, res) => {
 // Read
 router.get('/chats', requireAuth, async (req, res) => {
 	let errors = {};
+	const hasId = req?.query?.id;
+	let chats;
 
 	try {
-		const chats = await Chat.find({
-			users: { $elemMatch: { $eq: req?.user?._id } },
-		})
-			.populate('users')
-			.sort('createdAt');
+		if (hasId) {
+			const isValid = isValidObjectId(hasId);
+			if (!isValid) {
+				errors.message =
+					'Error, chat does not exist or you do not have permission to view it.';
+				return res.status(404).json(errors);
+			}
+
+			chats = await Chat.findOne({
+				_id: hasId,
+				users: { $elemMatch: { $eq: req?.user?._id } },
+			})
+				.populate('users')
+				.populate('messages')
+				.populate('latestMessage');
+
+			if (!chats) {
+				const userFound = await User.findById(hasId);
+				if (userFound) {
+					chats = await Chat.findOneAndUpdate(
+						{
+							isGroupChat: false,
+							users: {
+								$size: 2,
+								$all: [
+									{
+										$elemMatch: {
+											$eq: req?.user?._id,
+										},
+									},
+									{
+										$elemMatch: { $eq: userFound._id },
+									},
+								],
+							},
+						},
+						{
+							$setOnInsert: {
+								users: [req?.user?._id, userFound._id],
+							},
+						},
+						{
+							new: true,
+							upsert: true,
+						}
+					)
+						.populate('users')
+						.populate('messages')
+						.populate('latestMessage');
+				}
+			}
+		} else {
+			chats = await Chat.find({
+				users: { $elemMatch: { $eq: req?.user?._id } },
+			})
+				.populate('users')
+				.populate('messages')
+				.populate('latestMessage')
+				.sort('-updatedAt');
+		}
+
 		res.json(chats);
 	} catch (err) {
 		console.log(err);
 		errors.message = 'Error getting chat list!';
+		return res.status(400).json(errors);
+	}
+});
+
+// Update
+router.put('/chats/:id', requireAuth, async (req, res) => {
+	let errors = {};
+	const { id } = req?.params;
+
+	const updated = await Chat.findByIdAndUpdate(
+		id,
+		{
+			$set: req?.body,
+		},
+		{
+			new: true,
+		}
+	)
+		.populate('users')
+		.populate('messages')
+		.populate('latestMessage');
+
+	try {
+		if (!updated) {
+			errors.message =
+				"Error, chat chat not found or you don't have permission to update it.";
+			return res.status(404).json(errors);
+		}
+
+		res.json({ updated, success: { message: 'Chat updated successfully!' } });
+	} catch (err) {
+		console.log(err);
+		errors.message = 'Error, unable to update chat.';
+		return res.status(400).json(errors);
+	}
+});
+
+// Delete
+router.delete('/chats/:id', requireAuth, async (req, res) => {
+	let errors = {};
+	const { id } = req?.params;
+
+	const deleted = await Chat.findByIdAndDelete(id);
+
+	try {
+		if (!deleted) {
+			errors.message =
+				"Error, chat not found or you don't have permission to delete it.";
+			return res.status(404).json(errors);
+		}
+
+		return res.json({ success: { message: 'Chat deleted successfully!' } });
+	} catch (err) {
+		console.log(err);
+		errors.message = 'Error, unable to delete chat!';
 		return res.status(400).json(errors);
 	}
 });

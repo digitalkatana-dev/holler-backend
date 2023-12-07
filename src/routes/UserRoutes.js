@@ -11,6 +11,7 @@ const multer = require('multer');
 const requireAuth = require('../middleware/requireAuth');
 
 const Post = model('Post');
+const Notification = model('Notification');
 const User = model('User');
 const router = Router();
 config();
@@ -325,6 +326,10 @@ router.put('/users/:id/follow', requireAuth, async (req, res) => {
 			{ [option]: { following: id } },
 			{ new: true }
 		);
+
+		if (!isFollowing) {
+			await Notification.insertNotification(id, user?._id, 'follow', user?._id);
+		}
 
 		res.json({
 			success: { message: 'User followed/unfollowed successfully!' },
