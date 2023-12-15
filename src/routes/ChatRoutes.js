@@ -64,6 +64,7 @@ router.post('/chats', requireAuth, async (req, res) => {
 router.get('/chats', requireAuth, async (req, res) => {
 	let errors = {};
 	const hasId = req?.query?.id;
+	const unreadOnly = req?.query?.unreadOnly;
 	let chats;
 
 	try {
@@ -118,6 +119,18 @@ router.get('/chats', requireAuth, async (req, res) => {
 						.populate('latestMessage');
 				}
 			}
+		} else if (unreadOnly) {
+			chats = await Chat.find({
+				users: { $elemMatch: { $eq: req?.user?._id } },
+			})
+				.populate('users')
+				.populate('messages')
+				.populate('latestMessage')
+				.sort('-updatedAt');
+
+			chats = chats.filter(
+				(item) => !item.latestMessage.readBy.includes(req?.user?._id)
+			);
 		} else {
 			chats = await Chat.find({
 				users: { $elemMatch: { $eq: req?.user?._id } },
