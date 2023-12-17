@@ -117,7 +117,11 @@ io.on('connection', (socket) => {
 	});
 
 	socket.on('logout', () => {
-		activeSockets.delete(socket.id);
+		if (activeSockets.size > 1) {
+			activeSockets.delete(socket.id);
+		} else {
+			activeSockets.clear();
+		}
 		console.log('Socket disconnected');
 		socket.disconnect();
 	});

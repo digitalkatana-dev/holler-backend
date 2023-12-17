@@ -64,7 +64,7 @@ router.post('/chats', requireAuth, async (req, res) => {
 router.get('/chats', requireAuth, async (req, res) => {
 	let errors = {};
 	const hasId = req?.query?.id;
-	const unreadOnly = req?.query?.unreadOnly;
+	const unreadOnly = req?.query?.unread;
 	let chats;
 
 	try {
@@ -129,7 +129,7 @@ router.get('/chats', requireAuth, async (req, res) => {
 				.sort('-updatedAt');
 
 			chats = chats.filter(
-				(item) => !item.latestMessage.readBy.includes(req?.user?._id)
+				(item) => !item.latestMessage?.readBy.includes(req?.user?._id)
 			);
 		} else {
 			chats = await Chat.find({
