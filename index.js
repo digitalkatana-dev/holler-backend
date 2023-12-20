@@ -55,6 +55,7 @@ const io = new Server(server, {
 });
 
 const activeSockets = new Set();
+const activeChats = new Set();
 
 io.on('connection', (socket) => {
 	socket.on('setup', (userData) => {
@@ -68,6 +69,8 @@ io.on('connection', (socket) => {
 		console.log(`User refreshed: ${userData}`);
 		socket.join(userData);
 		socket.emit('reconnected');
+		activeSockets.add(socket.id);
+		console.log('Active Sockets', activeSockets);
 	});
 
 	socket.on('pong', () => {
@@ -88,9 +91,16 @@ io.on('connection', (socket) => {
 		console.log('Joined room:', room);
 		socket.join(room);
 		socket.emit('joined');
+		activeChats.add(room);
 	});
 
-	socket.on('end chat', () => console.log('Disconnected from chat'));
+	socket.on('rejoin', (room) => {
+		console.log(`Room refreshed: ${room}`);
+		socket.join(room);
+		socket.emit('rejoined');
+		activeChats.add(room);
+		console.log('Active Chats', activeChats);
+	});
 
 	socket.on('typing', (room) => {
 		socket.in(room).emit('typing');
@@ -112,8 +122,12 @@ io.on('connection', (socket) => {
 
 		chat.users.forEach((user) => {
 			if (user == newMessage.sender._id) return;
-			socket.in(user).emit('message received');
+			socket.in(user).emit('message received', chat._id);
 		});
+	});
+
+	socket.on('disconnect', () => {
+		activeSockets.delete(socket.id);
 	});
 
 	socket.on('logout', () => {

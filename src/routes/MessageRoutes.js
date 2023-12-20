@@ -64,4 +64,22 @@ router.post('/messages', requireAuth, async (req, res) => {
 	}
 });
 
+// Mark all read
+router.put('/messages/:chatId/markRead', requireAuth, async (req, res) => {
+	let errors = {};
+
+	try {
+		const { chatId } = req?.params;
+		await Message.updateMany(
+			{ chat: chatId },
+			{ $addToSet: { readBy: req?.user?._id } }
+		);
+
+		res.json({ success: { message: 'Messages marked as read successfully' } });
+	} catch (err) {
+		errors.message = 'Error marking all messages as read!';
+		return res.status(400).json(errors);
+	}
+});
+
 module.exports = router;
