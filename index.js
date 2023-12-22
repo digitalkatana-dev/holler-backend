@@ -25,10 +25,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 set('strictQuery', false);
 
-connect(process.env.MONGODB_URL, {
-	useUnifiedTopology: true,
-	useNewUrlParser: true,
-});
+connect(process.env.MONGODB_URL);
 
 connection.on('connected', () => {
 	console.log('Connected to db.');
