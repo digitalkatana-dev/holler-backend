@@ -5,6 +5,7 @@ const { genSalt, hash } = require('bcrypt');
 const { createHash } = require('crypto');
 const { config } = require('dotenv');
 const { validateRegistration, validateLogin } = require('../util/validators');
+const sgMail = require('@sendgrid/mail');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
@@ -15,6 +16,8 @@ const Notification = model('Notification');
 const User = model('User');
 const router = Router();
 config();
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const storage = multer.diskStorage({
 	destination: 'uploads/',
@@ -151,6 +154,84 @@ router.post('/users/login', async (req, res) => {
 	} catch (err) {
 		console.log(err);
 		errors.message = 'Something went wrong, try again!';
+		return res.status(400).json(errors);
+	}
+});
+
+// Generate Password Reset Token
+router.post('/users/generate-password-token', async (req, res) => {
+	const { valid, errors } = validateForgot(req?.body);
+
+	if (!valid) return res.status(400).json(errors);
+
+	const { email } = req?.body;
+
+	const user = await User.findOne({ email });
+
+	if (!user) {
+		errors.message = 'Error, user not found!';
+		return res.status(404).json(errors);
+	}
+
+	try {
+		const resetToken = user?.createPasswordResetToken();
+		await user?.save();
+
+		const resetUrl = `<h3>We've received a request to reset your password!</h3> \n <p>Hi ${email}, we received a password reset request from your account. To complete the reset, please <a href='http://localhost:3000/reset-password/${resetToken}'>click here.</a> The link is valid for 10 minutes.</p> \n <p>If this was not intended or you have questions about your account, please contact support@digitalkatana.dev right away.</p>`;
+		const msg = {
+			to: email,
+			from: process.env.SG_BASE_EMAIL,
+			subject: 'Reset Your Password',
+			html: resetUrl,
+		};
+
+		await sgMail.send(msg);
+		res.json({
+			message: `A password reset link has been sent to ${user?.email}. The link is valid for 10 minutes.`,
+		});
+	} catch (err) {
+		errors.message = 'Error generating token';
+		return res.status(400).json(errors);
+	}
+});
+
+// Password Reset
+router.post('/users/reset-password', async (req, res) => {
+	const { valid, errors } = validateReset(req?.body);
+
+	if (!valid) return res.status(400).json(errors);
+
+	const { password, token } = req?.body;
+
+	const hashedToken = createHash('sha256').update(token).digest('hex');
+	const user = await User.findOne({
+		passwordResetToken: hashedToken,
+		passwordResetTokenExpires: { $gt: new Date() },
+	});
+
+	if (!user) {
+		errors.message = 'Token expired, try again later.';
+		return res.status(400).json(errors);
+	}
+
+	try {
+		user.password = password;
+		user.passwordResetToken = undefined;
+		user.passwordResetTokenExpires = undefined;
+		await user?.save();
+
+		const successMessage = `<h3>Password Change Notification</h3> <p>This e-mail confirms that the password has been changed for your account.</p> <p>If you did not intend to change your password, please contact support@digitalkatana.dev right away.</p> `;
+		const msg = {
+			to: user?.email,
+			from: process.env.SG_BASE_EMAIL,
+			subject: 'Your Password Has Been Updated',
+			html: successMessage,
+		};
+
+		await sgMail.send(msg);
+		res.json({ message: 'Password Upated Successfully!' });
+	} catch (err) {
+		errors.message = 'Error verifing token.';
 		return res.status(400).json(errors);
 	}
 });
@@ -341,6 +422,74 @@ router.put('/users/:id/follow', requireAuth, async (req, res) => {
 	}
 });
 
+// Update
+router.put('/users/:id/update', requireAuth, async (req, res) => {
+	let errors = {};
+	const { id } = req?.params;
+
+	try {
+		if (req?.body?.password) {
+			const salt = await genSalt(10);
+			req.body.password = await hash(req?.body?.password, salt);
+		}
+
+		const updated = await User.findByIdAndUpdate(
+			id,
+			{
+				$set: req?.body,
+			},
+			{
+				new: true,
+			}
+		)
+			.populate('posts')
+			.populate('replies')
+			.populate('likes')
+			.populate('following')
+			.populate('followers')
+			.populate('repostUsers');
+
+		if (!updated) {
+			errors.message = 'Error, user not found!';
+			return res.status(404).json(errors);
+		}
+
+		updated.posts = await getPosts({
+			postedBy: updated._id,
+			replyTo: { $exists: false },
+		});
+		updated.replies = await getPosts({
+			postedBy: updated._id,
+			replyTo: { $exists: true },
+		});
+
+		const userData = {
+			_id: updated?._id,
+			firstName: updated?.firstName,
+			lastName: updated?.lastName,
+			dob: updated?.dob,
+			username: updated?.username,
+			email: updated?.email,
+			profilePic: updated?.profilePic,
+			coverPhoto: updated?.coverPhoto,
+			likes: updated?.likes,
+			following: updated?.following,
+			followers: updated?.followers,
+			posts: updated?.posts,
+			replies: updated?.replies,
+			repostUsers: updated?.repostUsers,
+			createdAt: updated?.createdAt,
+			updatedAt: updated?.updatedAt,
+		};
+
+		res.json({ userData, success: { message: 'User updated successfully!' } });
+	} catch (err) {
+		console.log(err);
+		errors.message = 'Error updating user!';
+		return res.status(400).json(errors);
+	}
+});
+
 // Upload Profile Pic
 router.post(
 	'/users/profile-pic',
@@ -466,6 +615,27 @@ router.post(
 		}
 	}
 );
+
+// Delete User
+router.delete('/users/:id/delete', requireAuth, async (req, res) => {
+	const errors = {};
+	const { id } = req?.params;
+
+	try {
+		const deleted = await User.findByIdAndDelete(id);
+
+		if (!deleted) {
+			errors.message = 'Error, user not found!';
+			return res.status(404).json(errors);
+		}
+
+		res.json({ deleted, success: { message: 'User deleted successfully!' } });
+	} catch (err) {
+		console.log(err);
+		errors.message = 'Error deleting user!';
+		return res.status(400).json(errors);
+	}
+});
 
 async function getPosts(filter) {
 	let results = await Post.find(filter)
