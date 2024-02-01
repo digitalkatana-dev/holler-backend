@@ -36,7 +36,7 @@ const userSchema = new Schema(
 		},
 		profilePic: {
 			type: String,
-			default: 'http://localhost:3005/uploads/images/no-user.png',
+			default: 'https://holler-backend.onrender.com/uploads/images/no-user.png',
 		},
 		coverPhoto: {
 			type: String,

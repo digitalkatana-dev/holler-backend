@@ -508,7 +508,7 @@ router.post(
 				req?.user?._id,
 				{
 					$set: {
-						profilePic: `http://localhost:3005${filePath}`,
+						profilePic: `https://holler-backend.onrender.com${filePath}`,
 					},
 				},
 				{
@@ -571,7 +571,7 @@ router.post(
 				req?.user?._id,
 				{
 					$set: {
-						coverPhoto: `http://localhost:3005${filePath}`,
+						coverPhoto: `https://holler-backend.onrender.com${filePath}`,
 					},
 				},
 				{
