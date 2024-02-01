@@ -45,7 +45,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
 	cors: {
-		origin: 'http://localhost:3000',
+		origin: 'https://holler.onrender.com',
 		methods: ['GET', 'POST'],
 	},
 	pingTimeout: 60000,
